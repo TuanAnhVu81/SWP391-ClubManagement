@@ -38,6 +38,9 @@ public class Users {
     
     @Column(name = "email", nullable = false)
     String email;
+
+    @Column(name = "password")
+    String password;
     
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)

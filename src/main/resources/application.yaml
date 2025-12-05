@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8080
   servlet:
     context-path: /api
 
@@ -18,3 +18,5 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
 
+jwt:
+  signerKey: "066f37bf2e51e827ed91c4ad68a3fcfd684c11f52e8ae1f22801bed7c788e1e3"
