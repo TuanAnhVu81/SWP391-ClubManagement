@@ -1,0 +1,72 @@
+package com.swp391.clubmanagement.entity;
+
+import com.swp391.clubmanagement.enums.ClubRoleType;
+import com.swp391.clubmanagement.enums.JoinStatus;
+import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@Entity
+@Table(name = "Registers", 
+       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "package_id"}))
+public class Registers {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "subscription_id")
+    Integer subscriptionId;
+    
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    Users user;
+    
+    @ManyToOne
+    @JoinColumn(name = "package_id", nullable = false)
+    Memberships membershipPackage;
+    
+    // Thông tin xử lý đơn
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    @Builder.Default
+    JoinStatus status = JoinStatus.ChoDuyet;
+    
+    @ManyToOne
+    @JoinColumn(name = "approver_id")
+    Users approver;
+    
+    // Thông tin thanh toán (Transaction)
+    @Column(name = "is_paid")
+    @Builder.Default
+    Boolean isPaid = false;
+    
+    @Column(name = "payment_date")
+    LocalDateTime paymentDate;
+    
+    @Column(name = "payment_method")
+    String paymentMethod;
+    
+    // Vai trò & Hiệu lực
+    @Enumerated(EnumType.STRING)
+    @Column(name = "club_role")
+    @Builder.Default
+    ClubRoleType clubRole = ClubRoleType.ThanhVien;
+    
+    @Column(name = "start_date")
+    LocalDateTime startDate;
+    
+    @Column(name = "end_date")
+    LocalDateTime endDate;
+    
+    @Column(name = "created_at")
+    @Builder.Default
+    LocalDateTime createdAt = LocalDateTime.now();
+}
+
