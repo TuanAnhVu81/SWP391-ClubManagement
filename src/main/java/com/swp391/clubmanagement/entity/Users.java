@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Getter
@@ -17,9 +18,9 @@ import java.util.Set;
 public class Users {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "user_id")
-    Integer userId;
+    String userId;
     
     @Column(name = "student_code", unique = true, nullable = false)
     String studentCode;
@@ -41,6 +42,16 @@ public class Users {
 
     @Column(name = "password")
     String password;
+
+    @Column(name = "verification_code")
+    String verificationCode;
+
+    @Column(name = "verification_expiry")
+    LocalDateTime verificationExpiry;
+
+    @Column(name = "is_enabled")
+    @Builder.Default
+    boolean enabled = false;
     
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)

@@ -9,6 +9,18 @@ spring:
     username: root
     password: root
   
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: clubhubfpt@gmail.com
+    password: "kwku usrt eeld uhju"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,3 +32,6 @@ spring:
 
 jwt:
   signerKey: "066f37bf2e51e827ed91c4ad68a3fcfd684c11f52e8ae1f22801bed7c788e1e3"
+
+app:
+  base-url: "http://localhost:8080/api"

@@ -40,6 +40,7 @@ public class ApplicationInitConfig {
                         .studentCode("ADMIN001")
                         .fullName("System Admin")
                         .email("admin@gmail.com")
+                        .enabled(true)
                         .password(passwordEncoder.encode("admin123"))
                         .role(adminRole)
                         .build();
