@@ -18,6 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.text.ParseException;
 
+/**
+ * AuthenticationController: REST Controller xử lý các yêu cầu xác thực.
+ * Expose API tại: /api/auth/...
+ */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -25,6 +29,12 @@ import java.text.ParseException;
 public class AuthenticationController {
     AuthenticationService authenticationService;
 
+    /**
+     * API Đăng nhập.
+     * Endpoint: POST /auth/token
+     * @param request chứa email và password
+     * @return Token JWT nếu đăng nhập thành công
+     */
     @PostMapping("/token")
     ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
         var result = authenticationService.authenticate(request);
@@ -33,6 +43,12 @@ public class AuthenticationController {
                 .build();
     }
 
+    /**
+     * API Kiểm tra token (Introspect).
+     * Endpoint: POST /auth/introspect
+     * @param request chứa token cần kiểm tra
+     * @return valid: true/false
+     */
     @PostMapping("/introspect")
     ApiResponse<IntrospectResponse> authenticate(@RequestBody IntrospectRequest request)
             throws ParseException, JOSEException {
@@ -42,6 +58,11 @@ public class AuthenticationController {
                 .build();
     }
 
+    /**
+     * API Đăng xuất.
+     * Endpoint: POST /auth/logout
+     * @param request chứa token cần đăng xuất
+     */
     @PostMapping("/logout")
     ApiResponse<Void> logout(@RequestBody LogoutRequest request)
             throws ParseException, JOSEException {

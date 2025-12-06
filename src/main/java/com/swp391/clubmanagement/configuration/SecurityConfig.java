@@ -32,10 +32,16 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    // Danh sách các API được phép truy cập công khai (không cần token)
-    private final String[] PUBLIC_ENDPOINTS = {
-            "/users", "/auth/login", "/auth/token", "/auth/introspect", 
+    // Danh sách các API được phép truy cập công khai (không cần token) - POST
+    private final String[] PUBLIC_POST_ENDPOINTS = {
+            "/users", "/users/verify", "/users/forgot-password",
+            "/auth/login", "/auth/token", "/auth/introspect", 
             "/auth/logout", "/auth/refresh"
+    };
+
+    // Danh sách các API được phép truy cập công khai - GET (xác thực email qua link)
+    private final String[] PUBLIC_GET_ENDPOINTS = {
+            "/users/verify"
     };
     
     // Danh sách các API GET public cho Clubs
@@ -58,9 +64,9 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(request ->
                 request
-                        // Cho phép POST đến các public endpoints (đăng ký, login...)
-                        .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
-                        // Cho phép GET đến các public endpoints (xem CLB...)
+                        // Cho phép POST đến các public endpoints (đăng ký, login, verify...)
+                        .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
+                        // Cho phép GET đến link xác thực email
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                         // Cho phép truy cập Swagger UI để xem tài liệu
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()

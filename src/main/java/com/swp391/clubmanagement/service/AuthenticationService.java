@@ -28,6 +28,9 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
+/**
+ * AuthenticationService: Service xử lý logic đăng nhập, đăng xuất và quản lý token.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -40,11 +43,17 @@ public class AuthenticationService {
     @Value("${jwt.signerKey}")
     protected String SIGNER_KEY;
 
+    /**
+     * introspect: Kiểm tra tính hợp lệ của token (dùng cho Resource Server hoặc Gateway).
+     * @param request chứa token cần kiểm tra
+     * @return kết quả valid: true/false
+     */
     public IntrospectResponse introspect(IntrospectRequest request) throws JOSEException, ParseException {
         var token = request.getToken();
         boolean isValid = true;
 
         try {
+            // Verify signature và expiration của token
             verifyToken(token);
         } catch (AppException e) {
             isValid = false;
@@ -55,15 +64,30 @@ public class AuthenticationService {
                 .build();
     }
 
+    /**
+     * authenticate: Xử lý đăng nhập.
+     * 1. Kiểm tra user tồn tại (theo email).
+     * 2. Khớp mật khẩu (dùng BCrypt).
+     * 3. Nếu đúng -> Tạo token.
+     */
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
+        // 1. Kiểm tra Email có tồn tại không
         var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_EXIST));
 
+        // 2. Kiểm tra tài khoản đã xác thực (enable) chưa
+        // Lưu ý: Trường 'enabled' trong Entity Users mặc định là false khi mới tạo
+        if (!user.isEnabled()) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        // 3. Kiểm tra mật khẩu
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
+        if (!authenticated) {
+            throw new AppException(ErrorCode.WRONG_PASSWORD);
+        }
 
-        if (!authenticated)
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-
+        // // 4. Nếu tất cả OK -> Tạo Token JWT
         var token = generateToken(user);
 
         return AuthenticationResponse.builder()
@@ -72,15 +96,26 @@ public class AuthenticationService {
                 .build();
     }
 
+    /**
+     * logout: Xử lý đăng xuất.
+     * Hiện tại chỉ verify token, sau này sẽ thêm logic Blacklist token vào Redis/DB
+     * để chặn các token còn hạn nhưng user đã logout.
+     */
     public void logout(LogoutRequest request) throws ParseException, JOSEException {
         try {
             var signToken = verifyToken(request.getToken());
-            // Logic blacklist token sẽ được implement tại đây
+            // TODO: Logic blacklist token sẽ được implement tại đây (lưu jti + expiryTime)
         } catch (AppException e) {
             log.info("Token already invalid");
         }
     }
 
+    /**
+     * verifyToken: Xác thực token.
+     * - Parse token string thành SignedJWT.
+     * - Verify chữ ký bằng SIGNER_KEY.
+     * - Kiểm tra thời gian hết hạn (Expiration Time).
+     */
     private SignedJWT verifyToken(String token) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
 
@@ -90,39 +125,53 @@ public class AuthenticationService {
 
         var verified = signedJWT.verify(verifier);
 
+        // Token hợp lệ khi: Chữ ký đúng VÀ chưa hết hạn
         if (!(verified && expiryTime.after(new Date())))
             throw new AppException(ErrorCode.UNAUTHENTICATED);
 
         return signedJWT;
     }
 
+    /**
+     * generateToken: Tạo JWT Token mới.
+     * - Header: Thuật toán HS512.
+     * - Payload: sub (email), iss (issuer), iat (issued at), exp (expiration), scope (ROLE_...).
+     * - Signature: Ký bằng SIGNER_KEY.
+     */
     private String generateToken(Users user) {
+        // 1. Tạo Header
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
+        // 2. Tạo Payload (Claims)
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getEmail())
-                .issuer("swp391.com")
-                .issueTime(new Date())
+                .subject(user.getEmail()) // Subject thường là định danh người dùng (email/username)
+                .issuer("swp391.com") // Người phát hành token
+                .issueTime(new Date()) // Thời điểm phát hành
                 .expirationTime(new Date(
-                        Instant.now().plus(5, ChronoUnit.MINUTES).toEpochMilli()
+                        Instant.now().plus(5, ChronoUnit.MINUTES).toEpochMilli() // Hết hạn sau 5 phút
                 ))
-                .claim("userId", user.getUserId())
-                .claim("scope", buildScope(user))
+                .claim("userId", user.getUserId()) // Thêm custom claim userId
+                .claim("scope", buildScope(user)) // Thêm claim scope (Role)
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
 
         JWSObject jwsObject = new JWSObject(header, payload);
 
+        // 3. Ký Token
         try {
             jwsObject.sign(new MACSigner(SIGNER_KEY.getBytes()));
-            return jwsObject.serialize();
+            return jwsObject.serialize(); // Trả về chuỗi JWT hoàn chỉnh
         } catch (JOSEException e) {
             log.error("Cannot create token", e);
             throw new RuntimeException(e);
         }
     }
 
+    /**
+     * buildScope: Tạo chuỗi scope từ Role của user.
+     * Convention: "ROLE_" + Tên Role (ví dụ: ROLE_ADMIN, ROLE_USER).
+     */
     private String buildScope(Users user) {
         if (user.getRole() != null) {
             return "ROLE_" + user.getRole().getRoleName().name();

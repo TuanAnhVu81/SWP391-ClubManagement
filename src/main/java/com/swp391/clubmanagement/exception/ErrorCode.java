@@ -16,6 +16,9 @@ public enum ErrorCode {
     // --- General Errors (Lỗi chung hệ thống - 1xxx) ---
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR), // Lỗi chưa được định nghĩa
     INVALID_KEY(1001, "Invalid message key", HttpStatus.BAD_REQUEST), // Key message không hợp lệ (thường dùng cho i18n)
+    EMAIL_SEND_FAILED(1002, "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_VERIFICATION_CODE(1003, "Invalid verification code", HttpStatus.BAD_REQUEST),
+    VERIFICATION_LINK_EXPIRED(1004, "Verification link has expired", HttpStatus.BAD_REQUEST),
     
     // --- User Related Errors (Lỗi liên quan đến người dùng - 2xxx) ---
     USER_EXISTED(2001, "User already exists", HttpStatus.BAD_REQUEST),
@@ -23,12 +26,15 @@ public enum ErrorCode {
     USERNAME_INVALID(2003, "Username must be at least 3 characters", HttpStatus.BAD_REQUEST),
     PASSWORD_INVALID(2004, "Password must be at least 8 characters", HttpStatus.BAD_REQUEST),
     INVALID_EMAIL(2005, "Invalid email format", HttpStatus.BAD_REQUEST),
+    EMAIL_NOT_EXIST(2006, "Email does not exist", HttpStatus.NOT_FOUND),
     
     // --- Authentication & Authorization Errors (Lỗi xác thực & phân quyền - 3xxx) ---
     UNAUTHENTICATED(3001, "Unauthenticated", HttpStatus.UNAUTHORIZED), // Chưa đăng nhập hoặc token không hợp lệ
     UNAUTHORIZED(3002, "You do not have permission", HttpStatus.FORBIDDEN), // Đã đăng nhập nhưng không có quyền truy cập
     INVALID_TOKEN(3003, "Invalid token", HttpStatus.UNAUTHORIZED),
     TOKEN_EXPIRED(3004, "Token has expired", HttpStatus.UNAUTHORIZED),
+    EMAIL_NOT_VERIFIED(3005, "Email is not verified. Please check your inbox.", HttpStatus.UNAUTHORIZED), // Chưa xác thực email
+    WRONG_PASSWORD(3006, "Incorrect password", HttpStatus.UNAUTHORIZED),
     
     // --- Club Related Errors (Lỗi liên quan đến CLB - 4xxx) ---
     CLUB_NOT_FOUND(4001, "Club not found", HttpStatus.NOT_FOUND),
