@@ -23,7 +23,7 @@ public class ClubResponse {
     LocalDate establishedDate;
     
     // Thông tin founder
-    Integer founderId;
+    String founderId;
     String founderName;
     String founderStudentCode;
 }

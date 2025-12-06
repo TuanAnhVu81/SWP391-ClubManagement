@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ClubMemberResponse {
     
-    Integer userId;
+    String userId;
     String studentCode;
     String fullName;
     String major;

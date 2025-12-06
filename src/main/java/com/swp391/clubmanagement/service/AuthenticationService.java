@@ -170,11 +170,12 @@ public class AuthenticationService {
 
     /**
      * buildScope: Tạo chuỗi scope từ Role của user.
-     * Convention: "ROLE_" + Tên Role (ví dụ: ROLE_ADMIN, ROLE_USER).
+     * Không thêm prefix "ROLE_" vì Spring Security sẽ tự động thêm "SCOPE_"
+     * Ví dụ: "SinhVien" -> JWT claim "scope": "SinhVien" -> Authority: "SCOPE_SinhVien"
      */
     private String buildScope(Users user) {
         if (user.getRole() != null) {
-            return "ROLE_" + user.getRole().getRoleName().name();
+            return user.getRole().getRoleName().name();
         }
         return "";
     }

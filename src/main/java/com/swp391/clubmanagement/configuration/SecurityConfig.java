@@ -39,14 +39,9 @@ public class SecurityConfig {
             "/auth/logout", "/auth/refresh"
     };
 
-    // Danh sách các API được phép truy cập công khai - GET (xác thực email qua link)
+    // Danh sách các API GET public (xác thực email, xem CLB...)
     private final String[] PUBLIC_GET_ENDPOINTS = {
-            "/users/verify"
-    };
-    
-    // Danh sách các API GET public cho Clubs
-    private final String[] PUBLIC_GET_ENDPOINTS = {
-            "/v1/clubs", "/v1/clubs/**"
+            "/users/verify", "/clubs", "/clubs/**"
     };
     
     // Danh sách các endpoint cho Swagger UI (Tài liệu API)
