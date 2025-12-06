@@ -44,6 +44,8 @@ public enum ErrorCode {
     APPLICATION_NOT_FOUND(6001, "Application not found", HttpStatus.NOT_FOUND),
     APPLICATION_ALREADY_SUBMITTED(6002, "Application already submitted", HttpStatus.BAD_REQUEST),
     INVALID_APPLICATION_STATUS(6003, "Invalid application status", HttpStatus.BAD_REQUEST),
+    APPLICATION_ALREADY_REVIEWED(6004, "Application already reviewed", HttpStatus.BAD_REQUEST),
+    NOT_CLUB_LEADER(6005, "You are not the leader of this club", HttpStatus.FORBIDDEN),
     
     // --- Validation Errors (Lỗi kiểm tra dữ liệu đầu vào - 7xxx) ---
     INVALID_REQUEST(7001, "Invalid request", HttpStatus.BAD_REQUEST),

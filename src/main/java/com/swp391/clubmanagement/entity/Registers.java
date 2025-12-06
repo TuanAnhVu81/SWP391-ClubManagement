@@ -65,6 +65,9 @@ public class Registers {
     @Column(name = "end_date")
     LocalDateTime endDate;
     
+    @Column(name = "join_date")
+    LocalDateTime joinDate;
+    
     @Column(name = "created_at")
     @Builder.Default
     LocalDateTime createdAt = LocalDateTime.now();
