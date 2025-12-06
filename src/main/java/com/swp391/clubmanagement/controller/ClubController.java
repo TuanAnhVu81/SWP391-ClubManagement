@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/clubs")
+@RequestMapping("/clubs")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
@@ -29,7 +29,7 @@ public class ClubController {
     ClubService clubService;
     
     /**
-     * GET /api/v1/clubs?name=&category=
+     * GET /api/clubs?name=&category=
      * Danh sách tất cả CLB đang hoạt động (Search theo tên, category)
      * Public API - không cần authentication
      */
@@ -47,7 +47,7 @@ public class ClubController {
     }
     
     /**
-     * GET /api/v1/clubs/{clubId}
+     * GET /api/clubs/{clubId}
      * Xem chi tiết thông tin 1 CLB
      * Public API - không cần authentication
      */
@@ -63,7 +63,7 @@ public class ClubController {
     }
     
     /**
-     * PUT /api/v1/clubs/{clubId}
+     * PUT /api/clubs/{clubId}
      * Cập nhật thông tin CLB (Logo, mô tả, địa điểm sinh hoạt)
      * Chỉ Leader mới được phép cập nhật
      */
@@ -82,7 +82,7 @@ public class ClubController {
     }
     
     /**
-     * GET /api/v1/clubs/{clubId}/members
+     * GET /api/clubs/{clubId}/members
      * Xem danh sách thành viên của CLB đó
      * Public API - không cần authentication
      */

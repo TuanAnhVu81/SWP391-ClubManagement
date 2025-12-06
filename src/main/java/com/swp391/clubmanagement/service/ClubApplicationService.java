@@ -42,8 +42,9 @@ public class ClubApplicationService {
     @Transactional
     public ClubApplicationResponse createClubApplication(ClubApplicationRequest request) {
         // Lấy thông tin user hiện tại từ Security Context
-        String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
-        Users creator = userRepository.findByStudentCode(studentCode)
+        // authentication.getName() trả về subject của JWT, tức là email
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Users creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
         // Tạo đơn mới
@@ -57,7 +58,7 @@ public class ClubApplicationService {
                 .build();
         
         application = clubApplicationRepository.save(application);
-        log.info("Created club application: {} by user: {}", application.getRequestId(), creator.getStudentCode());
+        log.info("Created club application: {} by user: {}", application.getRequestId(), creator.getEmail());
         
         return clubApplicationMapper.toResponse(application);
     }
@@ -83,8 +84,8 @@ public class ClubApplicationService {
      * Xem lịch sử các đơn mình đã gửi (Student)
      */
     public List<ClubApplicationResponse> getMyApplications() {
-        String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
-        Users creator = userRepository.findByStudentCode(studentCode)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Users creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
         List<ClubApplications> applications = clubApplicationRepository.findByCreatorOrderByCreatedAtDesc(creator);
@@ -101,8 +102,8 @@ public class ClubApplicationService {
     @Transactional
     public ClubApplicationResponse reviewApplication(Integer requestId, ReviewApplicationRequest request) {
         // Lấy thông tin admin reviewer
-        String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
-        Users reviewer = userRepository.findByStudentCode(studentCode)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Users reviewer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
         // Tìm đơn
@@ -142,7 +143,7 @@ public class ClubApplicationService {
         }
         
         application = clubApplicationRepository.save(application);
-        log.info("Application {} reviewed by {}: {}", requestId, reviewer.getStudentCode(), request.getStatus());
+        log.info("Application {} reviewed by {}: {}", requestId, reviewer.getEmail(), request.getStatus());
         
         return clubApplicationMapper.toResponse(application);
     }

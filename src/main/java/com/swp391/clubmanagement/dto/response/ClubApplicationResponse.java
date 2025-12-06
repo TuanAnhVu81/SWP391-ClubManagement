@@ -22,12 +22,12 @@ public class ClubApplicationResponse {
     String adminNote;
     
     // Thông tin người tạo đơn
-    Integer creatorId;
+    String creatorId;
     String creatorName;
     String creatorStudentCode;
     
     // Thông tin reviewer (nếu có)
-    Integer reviewerId;
+    String reviewerId;
     String reviewerName;
     
     // Club ID nếu đã được duyệt

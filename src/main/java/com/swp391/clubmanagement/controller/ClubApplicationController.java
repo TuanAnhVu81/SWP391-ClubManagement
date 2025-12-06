@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/club-requests")
+@RequestMapping("/club-requests")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
@@ -29,7 +29,7 @@ public class ClubApplicationController {
     ClubApplicationService clubApplicationService;
     
     /**
-     * POST /api/v1/club-requests
+     * POST /api/club-requests
      * Sinh viên gửi đơn yêu cầu thành lập CLB mới
      */
     @PostMapping
@@ -46,7 +46,7 @@ public class ClubApplicationController {
     }
     
     /**
-     * GET /api/v1/club-requests?status=DangCho
+     * GET /api/club-requests?status=DangCho
      * Admin xem danh sách các đơn yêu cầu mở CLB (Filter: DangCho/ChapThuan/TuChoi)
      */
     @GetMapping
@@ -63,7 +63,7 @@ public class ClubApplicationController {
     }
     
     /**
-     * GET /api/v1/club-requests/my-requests
+     * GET /api/club-requests/my-requests
      * Sinh viên xem lịch sử các đơn mình đã gửi
      */
     @GetMapping("/my-requests")
@@ -79,7 +79,7 @@ public class ClubApplicationController {
     }
     
     /**
-     * PUT /api/v1/club-requests/{requestId}/review
+     * PUT /api/club-requests/{requestId}/review
      * Admin duyệt (ChapThuan) hoặc từ chối đơn
      * Khi duyệt, hệ thống tự động tạo insert dữ liệu vào bảng Clubs
      */

@@ -70,8 +70,8 @@ public class ClubService {
     @Transactional
     public ClubResponse updateClub(Integer clubId, ClubUpdateRequest request) {
         // Lấy thông tin user hiện tại
-        String studentCode = SecurityContextHolder.getContext().getAuthentication().getName();
-        Users currentUser = userRepository.findByStudentCode(studentCode)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Users currentUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
         // Tìm CLB
@@ -98,7 +98,7 @@ public class ClubService {
         }
         
         club = clubRepository.save(club);
-        log.info("Club {} updated by leader {}", clubId, currentUser.getStudentCode());
+        log.info("Club {} updated by leader {}", clubId, currentUser.getEmail());
         
         return clubMapper.toResponse(club);
     }
