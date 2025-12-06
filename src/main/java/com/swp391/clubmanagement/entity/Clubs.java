@@ -30,6 +30,9 @@ public class Clubs {
     @Column(name = "category")
     ClubCategory category;
     
+    @Column(name = "logo")
+    String logo;
+    
     @Column(name = "location")
     String location;
     

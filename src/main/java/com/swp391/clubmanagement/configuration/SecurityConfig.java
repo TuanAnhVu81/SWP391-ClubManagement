@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -28,6 +29,7 @@ import javax.crypto.spec.SecretKeySpec;
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     // Danh sách các API được phép truy cập công khai (không cần token) - POST
@@ -40,6 +42,11 @@ public class SecurityConfig {
     // Danh sách các API được phép truy cập công khai - GET (xác thực email qua link)
     private final String[] PUBLIC_GET_ENDPOINTS = {
             "/users/verify"
+    };
+    
+    // Danh sách các API GET public cho Clubs
+    private final String[] PUBLIC_GET_ENDPOINTS = {
+            "/v1/clubs", "/v1/clubs/**"
     };
     
     // Danh sách các endpoint cho Swagger UI (Tài liệu API)
