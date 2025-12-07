@@ -41,10 +41,14 @@ public enum ErrorCode {
     CLUB_EXISTED(4002, "Club already exists", HttpStatus.BAD_REQUEST),
     CLUB_NAME_INVALID(4003, "Club name is invalid", HttpStatus.BAD_REQUEST),
     
-    // --- Membership Related Errors (Lỗi thành viên - 5xxx) ---
+    // --- Membership Related Errors (Lỗi thành viên/gói - 5xxx) ---
     MEMBERSHIP_NOT_FOUND(5001, "Membership not found", HttpStatus.NOT_FOUND),
     ALREADY_MEMBER(5002, "Already a member of this club", HttpStatus.BAD_REQUEST),
     NOT_CLUB_MEMBER(5003, "Not a member of this club", HttpStatus.FORBIDDEN),
+    PACKAGE_NOT_FOUND(5004, "Package not found", HttpStatus.NOT_FOUND),
+    PACKAGE_NOT_ACTIVE(5005, "Package is not active", HttpStatus.BAD_REQUEST),
+    ALREADY_REGISTERED(5006, "Already registered for this package", HttpStatus.BAD_REQUEST),
+    REGISTER_NOT_FOUND(5007, "Registration not found", HttpStatus.NOT_FOUND),
     
     // --- Application Related Errors (Lỗi đơn đăng ký - 6xxx) ---
     APPLICATION_NOT_FOUND(6001, "Application not found", HttpStatus.NOT_FOUND),
