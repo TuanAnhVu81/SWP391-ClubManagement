@@ -112,10 +112,11 @@ public class ClubService {
             throw new AppException(ErrorCode.CLUB_NOT_FOUND);
         }
         
-        // Lấy danh sách thành viên đã được duyệt
-        List<Registers> registers = registerRepository.findByClubIdAndStatus(clubId, JoinStatus.DaDuyet);
+        // Lấy danh sách thành viên đã được duyệt và đã đóng phí
+        List<Registers> registers = registerRepository.findByMembershipPackage_Club_ClubIdAndStatus(clubId, JoinStatus.DaDuyet);
         
         return registers.stream()
+                .filter(r -> r.getIsPaid()) // Chỉ lấy những người đã đóng phí
                 .map(clubMapper::toMemberResponse)
                 .collect(Collectors.toList());
     }
