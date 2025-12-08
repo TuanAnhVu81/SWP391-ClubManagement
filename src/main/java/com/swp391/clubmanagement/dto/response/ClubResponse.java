@@ -4,6 +4,7 @@ import com.swp391.clubmanagement.enums.ClubCategory;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
@@ -19,6 +20,8 @@ public class ClubResponse {
     String logo;
     String location;
     String description;
+    String email;
+    BigDecimal membershipFee;
     Boolean isActive;
     LocalDate establishedDate;
     

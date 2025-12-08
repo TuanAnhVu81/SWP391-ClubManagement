@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -41,6 +42,18 @@ public class ClubApplications {
     
     @Column(name = "purpose", columnDefinition = "TEXT")
     String purpose;
+    
+    @Column(name = "description", columnDefinition = "TEXT")
+    String description;
+    
+    @Column(name = "location")
+    String location;
+    
+    @Column(name = "email")
+    String email;
+    
+    @Column(name = "membership_fee", precision = 10, scale = 2)
+    BigDecimal membershipFee;
     
     // Trạng thái duyệt của Admin
     @Enumerated(EnumType.STRING)

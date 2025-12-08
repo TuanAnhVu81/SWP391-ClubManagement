@@ -53,6 +53,10 @@ public class ClubApplicationService {
                 .proposedName(request.getProposedName())
                 .category(request.getCategory())
                 .purpose(request.getPurpose())
+                .description(request.getDescription())
+                .location(request.getLocation())
+                .email(request.getEmail())
+                .membershipFee(request.getMembershipFee())
                 .status(RequestStatus.DangCho)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -131,7 +135,10 @@ public class ClubApplicationService {
             Clubs newClub = Clubs.builder()
                     .clubName(application.getProposedName())
                     .category(application.getCategory())
-                    .description(application.getPurpose())
+                    .description(application.getDescription()) // Sử dụng description thay vì purpose
+                    .location(application.getLocation())
+                    .email(application.getEmail())
+                    .membershipFee(application.getMembershipFee())
                     .founder(application.getCreator())
                     .isActive(true)
                     .build();

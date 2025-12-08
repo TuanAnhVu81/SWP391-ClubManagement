@@ -1,10 +1,11 @@
 package com.swp391.clubmanagement.dto.request;
 
 import com.swp391.clubmanagement.enums.ClubCategory;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -21,4 +22,17 @@ public class ClubApplicationRequest {
     
     @NotBlank(message = "Mục đích thành lập CLB không được để trống")
     String purpose;
+    
+    String description; // Mô tả chi tiết về CLB
+    
+    @NotBlank(message = "Địa điểm sinh hoạt không được để trống")
+    String location; // Địa điểm sinh hoạt của CLB
+    
+    @NotBlank(message = "Email CLB không được để trống")
+    @Email(message = "Email không đúng định dạng")
+    String email; // Email liên hệ của CLB
+    
+    @NotNull(message = "Phí tham gia không được để trống")
+    @DecimalMin(value = "0.0", message = "Phí tham gia phải lớn hơn hoặc bằng 0")
+    BigDecimal membershipFee; // Phí tham gia CLB
 }
