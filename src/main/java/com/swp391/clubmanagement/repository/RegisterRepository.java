@@ -5,6 +5,8 @@ import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.ClubRoleType;
 import com.swp391.clubmanagement.enums.JoinStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -42,4 +44,26 @@ public interface RegisterRepository extends JpaRepository<Registers, Integer> {
     // Tìm đăng ký của user trong CLB với role cụ thể
     Optional<Registers> findByUserAndMembershipPackage_Club_ClubIdAndClubRoleIn(
             Users user, Integer clubId, List<ClubRoleType> roles);
+    
+    // ============ THỐNG KÊ CHO ADMIN DASHBOARD ============
+    
+    // Đếm tổng số thành viên chính thức (đã duyệt + đã thanh toán)
+    long countByStatusAndIsPaid(JoinStatus status, Boolean isPaid);
+    
+    // Đếm số sinh viên duy nhất tham gia CLB
+    @Query("SELECT COUNT(DISTINCT r.user) FROM Registers r WHERE r.status = :status AND r.isPaid = :isPaid")
+    long countDistinctStudents(@Param("status") JoinStatus status, @Param("isPaid") Boolean isPaid);
+    
+    // Đếm thành viên theo vai trò (ClubRoleType)
+    @Query("SELECT r.clubRole, COUNT(r) FROM Registers r WHERE r.status = :status AND r.isPaid = :isPaid GROUP BY r.clubRole")
+    List<Object[]> countByClubRole(@Param("status") JoinStatus status, @Param("isPaid") Boolean isPaid);
+    
+    // Top N CLB có nhiều thành viên nhất
+    @Query("SELECT r.membershipPackage.club.clubId, r.membershipPackage.club.clubName, r.membershipPackage.club.logo, " +
+           "r.membershipPackage.club.category, COUNT(r) as memberCount " +
+           "FROM Registers r WHERE r.status = :status AND r.isPaid = :isPaid " +
+           "GROUP BY r.membershipPackage.club.clubId, r.membershipPackage.club.clubName, " +
+           "r.membershipPackage.club.logo, r.membershipPackage.club.category " +
+           "ORDER BY memberCount DESC")
+    List<Object[]> findTopClubsByMemberCount(@Param("status") JoinStatus status, @Param("isPaid") Boolean isPaid);
 }
