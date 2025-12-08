@@ -1,6 +1,7 @@
 package com.swp391.clubmanagement.service;
 
 import com.swp391.clubmanagement.dto.request.ApproveRegisterRequest;
+import com.swp391.clubmanagement.dto.request.ChangeRoleRequest;
 import com.swp391.clubmanagement.dto.request.ConfirmPaymentRequest;
 import com.swp391.clubmanagement.dto.response.RegisterResponse;
 import com.swp391.clubmanagement.entity.Registers;
@@ -18,6 +19,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -152,14 +154,148 @@ public class LeaderRegisterService {
         register.setPaymentDate(LocalDateTime.now());
         register.setPaymentMethod(request.getPaymentMethod());
         
-        // Set thời gian bắt đầu và kết thúc membership (ví dụ: 6 tháng)
-        register.setStartDate(LocalDateTime.now());
-        register.setEndDate(LocalDateTime.now().plusMonths(6)); // Có thể lấy từ package term
+        // Set thời gian bắt đầu và kết thúc membership dựa trên term của gói
+        LocalDateTime startDate = LocalDateTime.now();
+        register.setStartDate(startDate);
+        
+        // Tính endDate dựa trên term của package
+        String term = register.getMembershipPackage().getTerm();
+        LocalDateTime endDate = calculateEndDate(startDate, term);
+        register.setEndDate(endDate);
 
         registerRepository.save(register);
-        log.info("Payment confirmed for registration {} by Leader {}", request.getSubscriptionId(), currentUser.getEmail());
+        log.info("Payment confirmed for registration {} by Leader {}. Membership valid until: {}", 
+                request.getSubscriptionId(), currentUser.getEmail(), endDate);
 
         return registerMapper.toRegisterResponse(register);
+    }
+    
+    /**
+     * Tính toán endDate dựa trên term của gói membership
+     * @param startDate Ngày bắt đầu
+     * @param term Kỳ hạn (VD: "1 tháng", "3 tháng", "6 tháng", "1 năm")
+     * @return Ngày hết hạn
+     */
+    private LocalDateTime calculateEndDate(LocalDateTime startDate, String term) {
+        if (term == null || term.isEmpty()) {
+            // Mặc định 1 năm nếu không có term
+            return startDate.plusYears(1);
+        }
+        
+        // Chuyển về lowercase và trim để dễ xử lý
+        String normalizedTerm = term.toLowerCase().trim();
+        
+        // Parse term và tính endDate
+        if (normalizedTerm.contains("tháng")) {
+            // Trích xuất số tháng (VD: "1 tháng", "3 tháng", "6 tháng")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int months = Integer.parseInt(parts[0]);
+                return startDate.plusMonths(months);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 6 months", term);
+                return startDate.plusMonths(6);
+            }
+        } else if (normalizedTerm.contains("năm")) {
+            // Trích xuất số năm (VD: "1 năm", "2 năm")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int years = Integer.parseInt(parts[0]);
+                return startDate.plusYears(years);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 1 year", term);
+                return startDate.plusYears(1);
+            }
+        } else if (normalizedTerm.contains("month")) {
+            // Support English format (VD: "1 month", "6 months")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int months = Integer.parseInt(parts[0]);
+                return startDate.plusMonths(months);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 6 months", term);
+                return startDate.plusMonths(6);
+            }
+        } else if (normalizedTerm.contains("year")) {
+            // Support English format (VD: "1 year", "2 years")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int years = Integer.parseInt(parts[0]);
+                return startDate.plusYears(years);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 1 year", term);
+                return startDate.plusYears(1);
+            }
+        } else {
+            // Format không nhận diện được, mặc định 1 năm
+            log.warn("Unknown term format: {}. Using default 1 year", term);
+            return startDate.plusYears(1);
+        }
+    }
+    
+    /**
+     * Thăng chức/Hạ chức thành viên (Thay đổi role)
+     * VD: Từ ThanhVien lên PhoChuTich, hoặc từ PhoChuTich xuống ThanhVien
+     */
+    @Transactional
+    public RegisterResponse changeRole(Integer subscriptionId, ChangeRoleRequest request) {
+        Users currentUser = getCurrentUser();
+        
+        // Lấy đơn đăng ký
+        Registers register = registerRepository.findById(subscriptionId)
+                .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
+        
+        Integer clubId = register.getMembershipPackage().getClub().getClubId();
+        
+        // Kiểm tra quyền Leader
+        validateLeaderRole(currentUser, clubId);
+        
+        // Kiểm tra thành viên phải đã được duyệt và đã đóng phí
+        if (register.getStatus() != JoinStatus.DaDuyet || !register.getIsPaid()) {
+            throw new AppException(ErrorCode.INVALID_APPLICATION_STATUS);
+        }
+        
+        // Lưu role cũ để log
+        ClubRoleType oldRole = register.getClubRole();
+        
+        // Cập nhật role mới
+        register.setClubRole(request.getNewRole());
+        
+        registerRepository.save(register);
+        log.info("Member role changed: subscriptionId={}, user={}, oldRole={}, newRole={}, by={}", 
+                subscriptionId, register.getUser().getEmail(), oldRole, request.getNewRole(), currentUser.getEmail());
+        
+        return registerMapper.toRegisterResponse(register);
+    }
+    
+    /**
+     * Xóa thành viên khỏi CLB (Kick)
+     * Set status = DaRoiCLB để đánh dấu đã rời khỏi CLB
+     */
+    @Transactional
+    public void kickMember(Integer subscriptionId) {
+        Users currentUser = getCurrentUser();
+        
+        // Lấy đơn đăng ký
+        Registers register = registerRepository.findById(subscriptionId)
+                .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
+        
+        Integer clubId = register.getMembershipPackage().getClub().getClubId();
+        
+        // Kiểm tra quyền Leader
+        validateLeaderRole(currentUser, clubId);
+        
+        // Kiểm tra thành viên phải đang active (DaDuyet)
+        if (register.getStatus() != JoinStatus.DaDuyet) {
+            throw new AppException(ErrorCode.INVALID_APPLICATION_STATUS);
+        }
+        
+        // Set status = DaRoiCLB (Đã rời CLB)
+        register.setStatus(JoinStatus.DaRoiCLB);
+        
+        registerRepository.save(register);
+        log.info("Member kicked from club: subscriptionId={}, user={}, clubId={}, by={}", 
+                subscriptionId, register.getUser().getEmail(), clubId, currentUser.getEmail());
     }
 }
 
