@@ -21,7 +21,6 @@ public class ClubResponse {
     String location;
     String description;
     String email;
-    BigDecimal membershipFee;
     Boolean isActive;
     LocalDate establishedDate;
     

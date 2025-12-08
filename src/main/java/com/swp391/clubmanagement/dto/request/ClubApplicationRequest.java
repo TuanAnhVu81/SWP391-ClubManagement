@@ -32,7 +32,7 @@ public class ClubApplicationRequest {
     @Email(message = "Email không đúng định dạng")
     String email; // Email liên hệ của CLB
     
-    @NotNull(message = "Phí tham gia không được để trống")
-    @DecimalMin(value = "0.0", message = "Phí tham gia phải lớn hơn hoặc bằng 0")
-    BigDecimal membershipFee; // Phí tham gia CLB
+    @NotNull(message = "Phí thành viên mặc định không được để trống")
+    @DecimalMin(value = "0.0", message = "Phí thành viên phải lớn hơn hoặc bằng 0")
+    BigDecimal defaultMembershipFee; // Phí cho gói thành viên mặc định (sẽ tự động tạo khi duyệt)
 }

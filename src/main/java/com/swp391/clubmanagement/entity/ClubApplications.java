@@ -52,8 +52,8 @@ public class ClubApplications {
     @Column(name = "email")
     String email;
     
-    @Column(name = "membership_fee", precision = 10, scale = 2)
-    BigDecimal membershipFee;
+    @Column(name = "default_membership_fee", precision = 10, scale = 2)
+    BigDecimal defaultMembershipFee; // Phí cho gói membership mặc định
     
     // Trạng thái duyệt của Admin
     @Enumerated(EnumType.STRING)

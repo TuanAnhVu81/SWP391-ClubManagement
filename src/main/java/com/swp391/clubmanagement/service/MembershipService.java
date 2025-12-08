@@ -1,7 +1,9 @@
 package com.swp391.clubmanagement.service;
 
+import com.swp391.clubmanagement.dto.request.MembershipCreateRequest;
 import com.swp391.clubmanagement.dto.request.MembershipUpdateRequest;
 import com.swp391.clubmanagement.dto.response.MembershipResponse;
+import com.swp391.clubmanagement.entity.Clubs;
 import com.swp391.clubmanagement.entity.Memberships;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.ClubRoleType;
@@ -55,6 +57,49 @@ public class MembershipService {
         Memberships membership = membershipRepository.findById(packageId)
                 .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
         return membershipMapper.toMembershipResponse(membership);
+    }
+    
+    /**
+     * Tạo gói thành viên mới (Leader only)
+     */
+    @Transactional
+    public MembershipResponse createPackage(Integer clubId, MembershipCreateRequest request) {
+        // Lấy user hiện tại
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Users currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Tìm CLB
+        Clubs club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new AppException(ErrorCode.CLUB_NOT_FOUND));
+        
+        // Kiểm tra quyền: Phải là Leader (ChuTich, PhoChuTich) hoặc Founder
+        boolean isLeader = registerRepository.existsByUserAndMembershipPackage_Club_ClubIdAndClubRoleInAndStatusAndIsPaid(
+                currentUser,
+                clubId,
+                Arrays.asList(ClubRoleType.ChuTich, ClubRoleType.PhoChuTich),
+                JoinStatus.DaDuyet,
+                true
+        );
+        
+        if (!isLeader && !club.getFounder().getUserId().equals(currentUser.getUserId())) {
+            throw new AppException(ErrorCode.NOT_CLUB_LEADER);
+        }
+        
+        // Tạo gói mới
+        Memberships newPackage = Memberships.builder()
+                .club(club)
+                .packageName(request.getPackageName())
+                .term(request.getTerm())
+                .price(request.getPrice())
+                .description(request.getDescription())
+                .isActive(true)
+                .build();
+        
+        newPackage = membershipRepository.save(newPackage);
+        log.info("Package {} created for club {} by user {}", newPackage.getPackageId(), clubId, currentUser.getEmail());
+        
+        return membershipMapper.toMembershipResponse(newPackage);
     }
     
     /**

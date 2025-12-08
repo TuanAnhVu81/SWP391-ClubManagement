@@ -1,5 +1,6 @@
 package com.swp391.clubmanagement.controller;
 
+import com.swp391.clubmanagement.dto.request.MembershipCreateRequest;
 import com.swp391.clubmanagement.dto.request.MembershipUpdateRequest;
 import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.dto.response.MembershipResponse;
@@ -47,6 +48,24 @@ public class MembershipController {
     public ApiResponse<MembershipResponse> getPackageById(@PathVariable Integer packageId) {
         return ApiResponse.<MembershipResponse>builder()
                 .result(membershipService.getPackageById(packageId))
+                .build();
+    }
+    
+    /**
+     * POST /api/clubs/{clubId}/packages
+     * Tạo gói thành viên mới (insert vào bảng Memberships) - Leader only
+     */
+    @PostMapping("/club/{clubId}/create")
+    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @Operation(summary = "Tạo gói thành viên mới", description = "Tạo gói thành viên mới (insert vào bảng Memberships)")
+    public ApiResponse<MembershipResponse> createPackage(
+            @PathVariable Integer clubId,
+            @Valid @RequestBody MembershipCreateRequest request) {
+        
+        MembershipResponse response = membershipService.createPackage(clubId, request);
+        
+        return ApiResponse.<MembershipResponse>builder()
+                .result(response)
                 .build();
     }
     

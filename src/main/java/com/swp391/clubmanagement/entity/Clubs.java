@@ -43,10 +43,6 @@ public class Clubs {
     @Column(name = "email")
     String email;
     
-    @Column(name = "membership_fee", precision = 10, scale = 2)
-    @Builder.Default
-    BigDecimal membershipFee = BigDecimal.ZERO;
-    
     @ManyToOne
     @JoinColumn(name = "founder_id")
     Users founder;
