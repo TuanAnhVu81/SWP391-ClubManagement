@@ -44,8 +44,10 @@ public class ClubMapper {
                 .email(register.getUser().getEmail())
                 .avatarUrl(register.getUser().getAvatarUrl())
                 .packageName(register.getMembershipPackage() != null ? register.getMembershipPackage().getPackageName() : null)
+                .clubRole(register.getClubRole()) // Vai trò trong CLB
                 .status(register.getStatus())
                 .joinedAt(register.getJoinDate())
+                .endDate(register.getEndDate()) // Ngày hết hạn
                 .build();
     }
 }
