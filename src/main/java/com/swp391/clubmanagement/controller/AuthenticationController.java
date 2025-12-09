@@ -8,6 +8,9 @@ import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.dto.response.AuthenticationResponse;
 import com.swp391.clubmanagement.dto.response.IntrospectResponse;
 import com.swp391.clubmanagement.service.AuthenticationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,17 +29,21 @@ import java.text.ParseException;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Tag(name = "Authentication", description = "APIs xác thực: Đăng nhập, đăng xuất, kiểm tra token")
 public class AuthenticationController {
     AuthenticationService authenticationService;
 
     /**
-     * API Đăng nhập.
-     * Endpoint: POST /auth/token
-     * @param request chứa email và password
-     * @return Token JWT nếu đăng nhập thành công
+     * POST /api/auth/token
+     * Đăng nhập vào hệ thống
+     * 
+     * @param request { "email": "user@example.com", "password": "password123" }
+     * @return JWT token để sử dụng cho các API khác
      */
     @PostMapping("/token")
-    ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
+    @Operation(summary = "Đăng nhập", 
+               description = "Đăng nhập vào hệ thống bằng email và password. Trả về JWT token để sử dụng cho các API khác.")
+    public ApiResponse<AuthenticationResponse> authenticate(@Valid @RequestBody AuthenticationRequest request) {
         var result = authenticationService.authenticate(request);
         return ApiResponse.<AuthenticationResponse>builder()
                 .result(result)
@@ -44,13 +51,16 @@ public class AuthenticationController {
     }
 
     /**
-     * API Kiểm tra token (Introspect).
-     * Endpoint: POST /auth/introspect
-     * @param request chứa token cần kiểm tra
-     * @return valid: true/false
+     * POST /api/auth/introspect
+     * Kiểm tra token có hợp lệ không
+     * 
+     * @param request { "token": "eyJhbGciOiJIUzUxMiJ9..." }
+     * @return { "valid": true/false }
      */
     @PostMapping("/introspect")
-    ApiResponse<IntrospectResponse> authenticate(@RequestBody IntrospectRequest request)
+    @Operation(summary = "Kiểm tra token", 
+               description = "Kiểm tra token JWT có hợp lệ hay không (chữ ký đúng và chưa hết hạn)")
+    public ApiResponse<IntrospectResponse> introspect(@Valid @RequestBody IntrospectRequest request)
             throws ParseException, JOSEException {
         var result = authenticationService.introspect(request);
         return ApiResponse.<IntrospectResponse>builder()
@@ -59,12 +69,16 @@ public class AuthenticationController {
     }
 
     /**
-     * API Đăng xuất.
-     * Endpoint: POST /auth/logout
-     * @param request chứa token cần đăng xuất
+     * POST /api/auth/logout
+     * Đăng xuất khỏi hệ thống
+     * 
+     * @param request { "token": "eyJhbGciOiJIUzUxMiJ9..." }
+     * @return Thành công
      */
     @PostMapping("/logout")
-    ApiResponse<Void> logout(@RequestBody LogoutRequest request)
+    @Operation(summary = "Đăng xuất", 
+               description = "Đăng xuất khỏi hệ thống. Token sẽ được invalidate (trong tương lai sẽ thêm blacklist).")
+    public ApiResponse<Void> logout(@Valid @RequestBody LogoutRequest request)
             throws ParseException, JOSEException {
         authenticationService.logout(request);
         return ApiResponse.<Void>builder()
