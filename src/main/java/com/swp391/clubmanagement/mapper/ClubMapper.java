@@ -21,6 +21,7 @@ public class ClubMapper {
                 .logo(club.getLogo())
                 .location(club.getLocation())
                 .description(club.getDescription())
+                .email(club.getEmail())
                 .isActive(club.getIsActive())
                 .establishedDate(club.getEstablishedDate())
                 .founderId(club.getFounder() != null ? club.getFounder().getUserId() : null)

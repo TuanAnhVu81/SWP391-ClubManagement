@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
 
@@ -38,6 +39,9 @@ public class Clubs {
     
     @Column(name = "description", columnDefinition = "TEXT")
     String description;
+    
+    @Column(name = "email")
+    String email;
     
     @ManyToOne
     @JoinColumn(name = "founder_id")
