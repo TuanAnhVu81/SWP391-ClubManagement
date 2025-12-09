@@ -4,6 +4,7 @@ import com.swp391.clubmanagement.dto.request.ClubUpdateRequest;
 import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.dto.response.ClubMemberResponse;
 import com.swp391.clubmanagement.dto.response.ClubResponse;
+import com.swp391.clubmanagement.dto.response.ClubStatsResponse;
 import com.swp391.clubmanagement.enums.ClubCategory;
 import com.swp391.clubmanagement.service.ClubService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -94,6 +95,25 @@ public class ClubController {
         
         return ApiResponse.<List<ClubMemberResponse>>builder()
                 .result(responses)
+                .build();
+    }
+    
+    /**
+     * GET /api/clubs/{clubId}/stats
+     * Thống kê nội bộ CLB (Leader only)
+     * - Số lượng thành viên, tổng doanh thu từ phí thành viên
+     * - Danh sách chưa đóng phí
+     */
+    @GetMapping("/{clubId}/stats")
+    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @Operation(summary = "Thống kê nội bộ CLB", 
+               description = "Thống kê nội bộ CLB: Số lượng thành viên, tổng doanh thu từ phí thành viên, danh sách chưa đóng phí")
+    public ApiResponse<ClubStatsResponse> getClubStats(@PathVariable Integer clubId) {
+        
+        ClubStatsResponse response = clubService.getClubStats(clubId);
+        
+        return ApiResponse.<ClubStatsResponse>builder()
+                .result(response)
                 .build();
     }
 }

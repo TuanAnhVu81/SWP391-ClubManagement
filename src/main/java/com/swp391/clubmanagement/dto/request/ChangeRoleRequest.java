@@ -13,5 +13,5 @@ import lombok.experimental.FieldDefaults;
 public class ChangeRoleRequest {
     
     @NotNull(message = "Vai trò mới không được để trống")
-    ClubRoleType newRole; // ThanhVien, ThuQuy, PhoChuTich, ChuTich
+    ClubRoleType newRole; // ThanhVien, ThuKy, PhoChuTich, ChuTich
 }
