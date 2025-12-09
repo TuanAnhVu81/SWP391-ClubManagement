@@ -4,9 +4,12 @@ import com.swp391.clubmanagement.dto.response.ClubMemberResponse;
 import com.swp391.clubmanagement.dto.response.ClubResponse;
 import com.swp391.clubmanagement.entity.Clubs;
 import com.swp391.clubmanagement.entity.Registers;
+import com.swp391.clubmanagement.enums.ClubRoleType;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class ClubMapper {
     
     public ClubResponse toResponse(Clubs club) {
@@ -35,6 +38,10 @@ public class ClubMapper {
             return null;
         }
         
+        ClubRoleType clubRole = register.getClubRole();
+        log.debug("Mapping register {}: userId={}, clubRole={}", 
+                register.getSubscriptionId(), register.getUser().getUserId(), clubRole);
+        
         return ClubMemberResponse.builder()
                 .userId(register.getUser().getUserId())
                 .studentCode(register.getUser().getStudentCode())
@@ -44,7 +51,7 @@ public class ClubMapper {
                 .email(register.getUser().getEmail())
                 .avatarUrl(register.getUser().getAvatarUrl())
                 .packageName(register.getMembershipPackage() != null ? register.getMembershipPackage().getPackageName() : null)
-                .clubRole(register.getClubRole()) // Vai trò trong CLB
+                .clubRole(clubRole) // Vai trò trong CLB
                 .status(register.getStatus())
                 .joinedAt(register.getJoinDate())
                 .endDate(register.getEndDate()) // Ngày hết hạn

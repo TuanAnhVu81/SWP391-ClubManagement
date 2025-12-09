@@ -120,8 +120,15 @@ public class ClubService {
         // Lấy danh sách thành viên đã được duyệt và đã đóng phí
         List<Registers> registers = registerRepository.findByMembershipPackage_Club_ClubIdAndStatus(clubId, JoinStatus.DaDuyet);
         
+        log.debug("Found {} registers for club {} with status DaDuyet", registers.size(), clubId);
+        
         return registers.stream()
-                .filter(r -> r.getIsPaid()) // Chỉ lấy những người đã đóng phí
+                .filter(r -> {
+                    boolean isPaid = r.getIsPaid();
+                    log.debug("Register {}: userId={}, clubRole={}, isPaid={}", 
+                            r.getSubscriptionId(), r.getUser().getUserId(), r.getClubRole(), isPaid);
+                    return isPaid;
+                }) // Chỉ lấy những người đã đóng phí
                 .map(clubMapper::toMemberResponse)
                 .collect(Collectors.toList());
     }

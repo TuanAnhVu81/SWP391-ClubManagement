@@ -187,9 +187,22 @@ public class ClubApplicationService {
                     .createdAt(now)
                     .build();
             
-            registerRepository.save(founderRegistration);
-            log.info("Founder {} automatically added as ChuTich of club {}", 
-                    application.getCreator().getEmail(), newClub.getClubId());
+            // Đảm bảo clubRole được set đúng trước khi save
+            founderRegistration.setClubRole(ClubRoleType.ChuTich);
+            founderRegistration = registerRepository.save(founderRegistration);
+            
+            // Verify sau khi save
+            if (founderRegistration.getClubRole() != ClubRoleType.ChuTich) {
+                log.error("ERROR: Founder clubRole was not saved correctly! Expected: ChuTich, Actual: {}", 
+                        founderRegistration.getClubRole());
+                // Set lại và save lại
+                founderRegistration.setClubRole(ClubRoleType.ChuTich);
+                founderRegistration = registerRepository.save(founderRegistration);
+            }
+            
+            log.info("Founder {} automatically added as ChuTich of club {} with subscriptionId: {} and clubRole: {}", 
+                    application.getCreator().getEmail(), newClub.getClubId(), 
+                    founderRegistration.getSubscriptionId(), founderRegistration.getClubRole());
         }
         
         application = clubApplicationRepository.save(application);

@@ -8,6 +8,8 @@ import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +21,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Tag(name = "User Management", description = "APIs quản lý người dùng: Đăng ký, xác thực email, quên mật khẩu, cập nhật thông tin")
 public class UserController {
     UserService userService;
 
     @PostMapping
+    @Operation(summary = "Đăng ký tài khoản mới", 
+               description = "Đăng ký tài khoản người dùng mới. Hệ thống sẽ gửi email xác thực đến địa chỉ email đã đăng ký.")
     ApiResponse<Users> createUser(@RequestBody @Valid UserCreationRequest request) {
         return ApiResponse.<Users>builder()
                 .result(userService.createUser(request))
@@ -34,6 +39,8 @@ public class UserController {
      * Trả về trang HTML thông báo kết quả
      */
     @GetMapping(value = "/verify", produces = MediaType.TEXT_HTML_VALUE)
+    @Operation(summary = "Xác thực email qua link", 
+               description = "Xác thực email qua link được gửi trong email. API này được gọi khi người dùng click vào link xác thực trong email. Trả về trang HTML thông báo kết quả.")
     String verifyEmailByToken(@RequestParam("token") String token) {
         try {
             userService.verifyEmailByToken(token);
@@ -44,6 +51,8 @@ public class UserController {
     }
 
     @PostMapping("/verify")
+    @Operation(summary = "Xác thực email bằng mã code", 
+               description = "Xác thực email bằng mã code được gửi đến email. Người dùng nhập mã code để xác thực tài khoản.")
     ApiResponse<String> verifyEmail(@RequestBody VerifyEmailRequest request) {
         userService.verifyEmail(request);
         return ApiResponse.<String>builder()
@@ -52,6 +61,8 @@ public class UserController {
     }
 
     @PostMapping("/forgot-password")
+    @Operation(summary = "Quên mật khẩu", 
+               description = "Yêu cầu đặt lại mật khẩu. Hệ thống sẽ gửi mật khẩu mới đến email đã đăng ký.")
     ApiResponse<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         userService.forgotPassword(request);
         return ApiResponse.<String>builder()
@@ -60,6 +71,8 @@ public class UserController {
     }
 
     @GetMapping("/my-info")
+    @Operation(summary = "Xem thông tin cá nhân", 
+               description = "Xem thông tin cá nhân của người dùng hiện tại (thông tin được lấy từ JWT token).")
     ApiResponse<Users> getMyInfo() {
         return ApiResponse.<Users>builder()
                 .result(userService.getMyInfo())
@@ -67,6 +80,8 @@ public class UserController {
     }
 
     @PutMapping("/my-info")
+    @Operation(summary = "Cập nhật thông tin cá nhân", 
+               description = "Cập nhật thông tin cá nhân của người dùng hiện tại (tên, số điện thoại, avatar, v.v.).")
     ApiResponse<Users> updateMyInfo(@RequestBody UserUpdateRequest request) {
         return ApiResponse.<Users>builder()
                 .result(userService.updateUser(request))

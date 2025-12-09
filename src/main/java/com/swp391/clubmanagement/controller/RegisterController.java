@@ -51,6 +51,9 @@ public class RegisterController {
      * Endpoint: GET /registers/my-registrations
      */
     @GetMapping("/my-registrations")
+    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @Operation(summary = "Danh sách đăng ký của tôi", 
+               description = "Xem danh sách tất cả các CLB mà sinh viên đã đăng ký tham gia và trạng thái của từng đăng ký (ChoDuyet, DaDuyet, TuChoi, DaRoiCLB).")
     ApiResponse<List<RegisterResponse>> getMyRegistrations() {
         return ApiResponse.<List<RegisterResponse>>builder()
                 .result(registerService.getMyRegistrations())
