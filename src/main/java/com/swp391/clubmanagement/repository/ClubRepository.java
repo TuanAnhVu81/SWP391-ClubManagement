@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -31,4 +32,15 @@ public interface ClubRepository extends JpaRepository<Clubs, Integer> {
     
     // Kiểm tra user có phải là founder của club không
     boolean existsByClubIdAndFounder(Integer clubId, Users founder);
+    
+    // Đếm tổng số CLB active
+    long countByIsActiveTrue();
+    
+    // Đếm CLB theo category
+    @Query("SELECT c.category, COUNT(c) FROM Clubs c WHERE c.isActive = true GROUP BY c.category")
+    List<Object[]> countByCategory();
+    
+    // Tìm CLB mới trong tháng (theo establishedDate)
+    @Query("SELECT c FROM Clubs c WHERE c.isActive = true AND c.establishedDate >= :startOfMonth ORDER BY c.establishedDate DESC")
+    List<Clubs> findNewClubsThisMonth(@Param("startOfMonth") LocalDate startOfMonth);
 }
