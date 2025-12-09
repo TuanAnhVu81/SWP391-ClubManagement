@@ -5,9 +5,9 @@ server:
 
 spring:
   datasource:
-    url: "jdbc:mysql://localhost:3306/club_management"
-    username: root
-    password: root
+    url: "jdbc:mysql://swp391-server.mysql.database.azure.com:3306/club_management?ssl-mode=REQUIRED"
+    username: anhvt
+    password: Club1234@
   
   mail:
     host: smtp.gmail.com
