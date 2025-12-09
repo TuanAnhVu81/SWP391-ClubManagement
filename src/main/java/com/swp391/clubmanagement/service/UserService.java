@@ -35,7 +35,7 @@ public class UserService {
     EmailService emailService;
 
     @NonFinal
-    @Value("${app.base-url:http://localhost:8080/api}")
+    @Value("${app.base-url:https://clubmanage.azurewebsites.net/api}")
     String baseUrl;
 
     // Thời hạn link xác thực (1 giờ)

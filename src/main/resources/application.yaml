@@ -34,4 +34,4 @@ jwt:
   signerKey: "066f37bf2e51e827ed91c4ad68a3fcfd684c11f52e8ae1f22801bed7c788e1e3"
 
 app:
-  base-url: "http://localhost:8081/api"
+  base-url: "https://clubmanage.azurewebsites.net/api"
