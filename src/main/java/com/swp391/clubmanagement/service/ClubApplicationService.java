@@ -6,7 +6,10 @@ import com.swp391.clubmanagement.dto.response.ClubApplicationResponse;
 import com.swp391.clubmanagement.entity.ClubApplications;
 import com.swp391.clubmanagement.entity.Clubs;
 import com.swp391.clubmanagement.entity.Memberships;
+import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
+import com.swp391.clubmanagement.enums.ClubRoleType;
+import com.swp391.clubmanagement.enums.JoinStatus;
 import com.swp391.clubmanagement.enums.RequestStatus;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
@@ -14,6 +17,7 @@ import com.swp391.clubmanagement.mapper.ClubApplicationMapper;
 import com.swp391.clubmanagement.repository.ClubApplicationRepository;
 import com.swp391.clubmanagement.repository.ClubRepository;
 import com.swp391.clubmanagement.repository.MembershipRepository;
+import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +40,7 @@ public class ClubApplicationService {
     ClubApplicationRepository clubApplicationRepository;
     ClubRepository clubRepository;
     MembershipRepository membershipRepository;
+    RegisterRepository registerRepository;
     UserRepository userRepository;
     ClubApplicationMapper clubApplicationMapper;
     
@@ -161,9 +166,30 @@ public class ClubApplicationService {
                     .isActive(true)
                     .build();
             
-            membershipRepository.save(defaultPackage);
+            defaultPackage = membershipRepository.save(defaultPackage);
             log.info("Default membership package created for club: {} with price: {}", 
                     newClub.getClubId(), application.getDefaultMembershipFee());
+            
+            // 3. Tự động thêm founder vào CLB với role ChuTich
+            LocalDateTime now = LocalDateTime.now();
+            Registers founderRegistration = Registers.builder()
+                    .user(application.getCreator())
+                    .membershipPackage(defaultPackage)
+                    .status(JoinStatus.DaDuyet)
+                    .clubRole(ClubRoleType.ChuTich) // Founder tự động là Chủ tịch
+                    .approver(reviewer) // Admin duyệt đơn cũng duyệt luôn founder
+                    .isPaid(true) // Miễn phí cho founder
+                    .paymentMethod("MIỄN PHÍ - NGƯỜI SÁNG LẬP")
+                    .paymentDate(now)
+                    .startDate(now)
+                    .endDate(now.plusYears(10)) // Founder có membership vĩnh viễn (10 năm)
+                    .joinDate(now)
+                    .createdAt(now)
+                    .build();
+            
+            registerRepository.save(founderRegistration);
+            log.info("Founder {} automatically added as ChuTich of club {}", 
+                    application.getCreator().getEmail(), newClub.getClubId());
         }
         
         application = clubApplicationRepository.save(application);

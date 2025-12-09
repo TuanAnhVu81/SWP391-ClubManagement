@@ -260,11 +260,11 @@ public class LeaderRegisterService {
         
         // Cập nhật role mới
         register.setClubRole(request.getNewRole());
-        
+
         registerRepository.save(register);
         log.info("Member role changed: subscriptionId={}, user={}, oldRole={}, newRole={}, by={}", 
                 subscriptionId, register.getUser().getEmail(), oldRole, request.getNewRole(), currentUser.getEmail());
-        
+
         return registerMapper.toRegisterResponse(register);
     }
     
