@@ -1,5 +1,6 @@
 package com.swp391.clubmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.swp391.clubmanagement.enums.ClubCategory;
 import jakarta.persistence.*;
 import lombok.*;
@@ -43,6 +44,7 @@ public class Clubs {
     @Column(name = "email")
     String email;
     
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "founder_id")
     Users founder;
@@ -55,10 +57,12 @@ public class Clubs {
     @Builder.Default
     LocalDate establishedDate = LocalDate.now();
     
-    // Relationships
+    // Relationships - Ignore để tránh circular reference khi serialize JSON
+    @JsonIgnore
     @OneToOne(mappedBy = "club")
     ClubApplications application;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "club")
     Set<Memberships> memberships;
 }

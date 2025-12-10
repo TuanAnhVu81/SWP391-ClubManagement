@@ -23,7 +23,6 @@ import java.util.Map;
 @RequestMapping("/admin/dashboard")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@PreAuthorize("hasRole('QuanTriVien')")
 @Tag(name = "Admin Dashboard", description = "APIs thống kê và dashboard dành cho Quản trị viên")
 public class AdminDashboardController {
     AdminDashboardService adminDashboardService;
@@ -33,6 +32,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard
      */
     @GetMapping
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Lấy tất cả dữ liệu Dashboard", 
                description = "Lấy tất cả dữ liệu thống kê tổng hợp cho Admin Dashboard bao gồm: tổng số CLB, tổng số thành viên, tổng số sinh viên, thống kê theo danh mục, thống kê theo vai trò, top CLB, CLB mới trong tháng.")
     ApiResponse<AdminDashboardResponse> getDashboard() {
@@ -46,6 +46,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard/total-clubs
      */
     @GetMapping("/total-clubs")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Tổng số CLB", 
                description = "Lấy tổng số CLB đang hoạt động trong hệ thống.")
     ApiResponse<Long> getTotalClubs() {
@@ -59,6 +60,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard/total-members
      */
     @GetMapping("/total-members")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Tổng số thành viên", 
                description = "Lấy tổng số thành viên (memberships) đã được duyệt và đã đóng phí trong tất cả các CLB.")
     ApiResponse<Long> getTotalMembers() {
@@ -72,6 +74,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard/total-students
      */
     @GetMapping("/total-students")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Tổng số sinh viên duy nhất", 
                description = "Lấy tổng số sinh viên duy nhất đã tham gia ít nhất một CLB (đã được duyệt và đã đóng phí).")
     ApiResponse<Long> getTotalStudents() {
@@ -85,6 +88,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard/clubs-by-category
      */
     @GetMapping("/clubs-by-category")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Thống kê CLB theo danh mục", 
                description = "Lấy thống kê số lượng CLB theo từng danh mục (VănHoa, TheThao, HocThuat, KyThuat, XaHoi, Khac).")
     ApiResponse<Map<String, Long>> getClubsByCategory() {
@@ -98,6 +102,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard/members-by-role
      */
     @GetMapping("/members-by-role")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Thống kê thành viên theo vai trò", 
                description = "Lấy thống kê số lượng thành viên theo từng vai trò trong CLB (ChuTich, PhoChuTich, ThuKy, ThanhVien).")
     ApiResponse<Map<String, Long>> getMembersByRole() {
@@ -111,6 +116,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard/top-clubs
      */
     @GetMapping("/top-clubs")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Top 5 CLB có nhiều thành viên nhất", 
                description = "Lấy danh sách top 5 CLB có số lượng thành viên nhiều nhất, bao gồm thông tin CLB (ID, tên, logo, danh mục) và số lượng thành viên.")
     ApiResponse<List<ClubStatistic>> getTop5ClubsByMembers() {
@@ -124,6 +130,7 @@ public class AdminDashboardController {
      * Endpoint: GET /admin/dashboard/new-clubs
      */
     @GetMapping("/new-clubs")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "CLB mới trong tháng", 
                description = "Lấy danh sách các CLB mới được thành lập trong tháng hiện tại, sắp xếp theo ngày thành lập mới nhất.")
     ApiResponse<List<ClubResponse>> getNewClubsThisMonth() {
