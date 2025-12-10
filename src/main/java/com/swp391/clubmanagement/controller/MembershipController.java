@@ -56,7 +56,7 @@ public class MembershipController {
      * Tạo gói thành viên mới (insert vào bảng Memberships) - Leader only
      */
     @PostMapping("/club/{clubId}/create")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Tạo gói thành viên mới", description = "Tạo gói thành viên mới (insert vào bảng Memberships)")
     public ApiResponse<MembershipResponse> createPackage(
             @PathVariable Integer clubId,
@@ -74,7 +74,7 @@ public class MembershipController {
      * Sửa thông tin gói (Tên, giá, mô tả) - Leader only
      */
     @PutMapping("/{packageId}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Cập nhật gói thành viên", description = "Sửa thông tin gói (Tên, giá, mô tả)")
     public ApiResponse<MembershipResponse> updatePackage(
             @PathVariable Integer packageId,
@@ -92,7 +92,7 @@ public class MembershipController {
      * Đóng gói đăng ký (Soft delete hoặc set is_active=false) - Leader only
      */
     @DeleteMapping("/{packageId}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Đóng gói đăng ký", description = "Đóng gói đăng ký (Soft delete hoặc set is_active=false)")
     public ApiResponse<Void> deletePackage(@PathVariable Integer packageId) {
         membershipService.deletePackage(packageId);

@@ -36,7 +36,7 @@ public class RegisterController {
      * @return Thông tin đăng ký. Trạng thái mặc định: ChoDuyet (chờ Leader duyệt)
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Đăng ký tham gia CLB", 
                description = "Sinh viên đăng ký tham gia CLB bằng cách chọn 1 gói membership. Trạng thái ban đầu: ChoDuyet")
     public ApiResponse<RegisterResponse> joinClub(@Valid @RequestBody JoinClubRequest request) {
@@ -51,7 +51,7 @@ public class RegisterController {
      * Endpoint: GET /registers/my-registrations
      */
     @GetMapping("/my-registrations")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Danh sách đăng ký của tôi", 
                description = "Xem danh sách tất cả các CLB mà sinh viên đã đăng ký tham gia và trạng thái của từng đăng ký (ChoDuyet, DaDuyet, TuChoi, DaRoiCLB).")
     ApiResponse<List<RegisterResponse>> getMyRegistrations() {
@@ -68,7 +68,7 @@ public class RegisterController {
      * @return Thông tin đăng ký chi tiết
      */
     @GetMapping("/{subscriptionId}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Chi tiết đăng ký", 
                description = "Xem chi tiết 1 đăng ký CLB")
     public ApiResponse<RegisterResponse> getRegistrationById(@PathVariable Integer subscriptionId) {
@@ -85,7 +85,7 @@ public class RegisterController {
      * @return Thành công. Chỉ hủy được khi trạng thái còn ChoDuyet (chưa được duyệt)
      */
     @DeleteMapping("/{subscriptionId}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Hủy đăng ký", 
                description = "Hủy đăng ký CLB. Chỉ hủy được khi trạng thái còn ChoDuyet (chưa được Leader duyệt)")
     public ApiResponse<String> cancelRegistration(@PathVariable Integer subscriptionId) {

@@ -69,7 +69,7 @@ public class ClubController {
      * Chỉ Leader mới được phép cập nhật
      */
     @PutMapping("/{clubId}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Cập nhật thông tin CLB", description = "Cập nhật thông tin CLB (Logo, mô tả, địa điểm sinh hoạt)")
     public ApiResponse<ClubResponse> updateClub(
             @PathVariable Integer clubId,
@@ -105,7 +105,7 @@ public class ClubController {
      * - Danh sách chưa đóng phí
      */
     @GetMapping("/{clubId}/stats")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Thống kê nội bộ CLB", 
                description = "Thống kê nội bộ CLB: Số lượng thành viên, tổng doanh thu từ phí thành viên, danh sách chưa đóng phí")
     public ApiResponse<ClubStatsResponse> getClubStats(@PathVariable Integer clubId) {
