@@ -57,6 +57,10 @@ public class Users {
     @Builder.Default
     boolean enabled = false;
     
+    @Column(name = "created_at")
+    @Builder.Default
+    LocalDateTime createdAt = LocalDateTime.now();
+    
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
     Roles role;

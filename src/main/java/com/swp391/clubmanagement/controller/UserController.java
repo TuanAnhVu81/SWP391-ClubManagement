@@ -2,6 +2,7 @@ package com.swp391.clubmanagement.controller;
 
 import com.swp391.clubmanagement.dto.request.*;
 import com.swp391.clubmanagement.dto.response.ApiResponse;
+import com.swp391.clubmanagement.dto.response.UserResponse;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.service.UserService;
@@ -11,7 +12,13 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -92,6 +99,20 @@ public class UserController {
     ApiResponse<Users> updateMyInfo(@RequestBody UserUpdateRequest request) {
         return ApiResponse.<Users>builder()
                 .result(userService.updateUser(request))
+                .build();
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')") // Chỉ Admin được xem
+    @Operation(summary = "Lấy danh sách Users (Phân trang)",
+            description = "Lấy danh sách toàn bộ người dùng. Chỉ dành cho Admin. Hỗ trợ phân trang và sắp xếp.")
+    public ApiResponse<Page<UserResponse>> getAllUsers(
+            @ParameterObject
+            @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        return ApiResponse.<Page<UserResponse>>builder()
+                .result(userService.getAllUsers(pageable))
                 .build();
     }
 

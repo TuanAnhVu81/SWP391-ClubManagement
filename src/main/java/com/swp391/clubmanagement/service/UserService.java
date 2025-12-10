@@ -1,6 +1,7 @@
 package com.swp391.clubmanagement.service;
 
 import com.swp391.clubmanagement.dto.request.*;
+import com.swp391.clubmanagement.dto.response.UserResponse;
 import com.swp391.clubmanagement.entity.Roles;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.RoleType;
@@ -17,6 +18,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -151,6 +155,12 @@ public class UserService {
         String email = context.getAuthentication().getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable)
+                .map(userMapper::toUserResponse);
     }
 
     public Users updateUser(UserUpdateRequest request) {
