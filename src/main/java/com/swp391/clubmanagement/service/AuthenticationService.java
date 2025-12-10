@@ -11,8 +11,13 @@ import com.swp391.clubmanagement.dto.request.LogoutRequest;
 import com.swp391.clubmanagement.dto.response.AuthenticationResponse;
 import com.swp391.clubmanagement.dto.response.IntrospectResponse;
 import com.swp391.clubmanagement.entity.Users;
+import com.swp391.clubmanagement.enums.ClubRoleType;
+import com.swp391.clubmanagement.enums.JoinStatus;
+import com.swp391.clubmanagement.enums.RoleType;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
+import com.swp391.clubmanagement.repository.ClubRepository;
+import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +32,8 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * AuthenticationService: Service xử lý logic đăng nhập, đăng xuất và quản lý token.
@@ -38,6 +45,8 @@ import java.util.Date;
 public class AuthenticationService {
     UserRepository userRepository;
     PasswordEncoder passwordEncoder;
+    ClubRepository clubRepository;
+    RegisterRepository registerRepository;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -152,6 +161,7 @@ public class AuthenticationService {
                 ))
                 .claim("userId", user.getUserId()) // Thêm custom claim userId
                 .claim("scope", buildScope(user)) // Thêm claim scope (Role)
+                .claim("clubIds", getClubIds(user)) // Thêm danh sách clubId mà user là leader hoặc member
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -178,6 +188,33 @@ public class AuthenticationService {
             return user.getRole().getRoleName().name();
         }
         return "";
+    }
+    
+    /**
+     * getClubIds: Lấy danh sách clubId mà user là leader (ChuTich) hoặc member.
+     * - Nếu user là ChuTich (founder): Lấy CLB mà họ là founder
+     * - Nếu user có ClubRole = ChuTich, PhoChuTich, ThuKy: Lấy CLB đó
+     * - Nếu user là member thường: Lấy tất cả CLB mà họ đã tham gia (đã duyệt và đã đóng phí)
+     */
+    private List<Integer> getClubIds(Users user) {
+        // 1. Lấy CLB mà user là founder
+        List<Integer> foundedClubIds = clubRepository.findByFounder(user).stream()
+                .map(club -> club.getClubId())
+                .collect(Collectors.toList());
+        
+        // 2. Lấy CLB mà user là leader (ChuTich, PhoChuTich, ThuKy) hoặc member
+        List<Integer> memberClubIds = registerRepository.findByUser(user).stream()
+                .filter(reg -> reg.getStatus() == JoinStatus.DaDuyet && reg.getIsPaid())
+                .filter(reg -> reg.getMembershipPackage() != null && reg.getMembershipPackage().getClub() != null)
+                .map(reg -> reg.getMembershipPackage().getClub().getClubId())
+                .distinct()
+                .collect(Collectors.toList());
+        
+        // 3. Gộp và loại bỏ trùng lặp
+        foundedClubIds.addAll(memberClubIds);
+        return foundedClubIds.stream()
+                .distinct()
+                .collect(Collectors.toList());
     }
 }
 
