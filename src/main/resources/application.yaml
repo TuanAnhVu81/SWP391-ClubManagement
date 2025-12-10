@@ -39,6 +39,7 @@ jwt:
 
 app:
   base-url: "https://clubmanage.azurewebsites.net/api"
+#  base-url: "http://localhost:8081/api"
 
 springdoc:
   swagger-ui:

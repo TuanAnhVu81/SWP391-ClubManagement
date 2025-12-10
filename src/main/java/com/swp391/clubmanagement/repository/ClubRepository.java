@@ -33,6 +33,9 @@ public interface ClubRepository extends JpaRepository<Clubs, Integer> {
     // Kiểm tra user có phải là founder của club không
     boolean existsByClubIdAndFounder(Integer clubId, Users founder);
     
+    // Tìm tất cả CLB mà user là founder
+    List<Clubs> findByFounder(Users founder);
+    
     // Đếm tổng số CLB active
     long countByIsActiveTrue();
     
