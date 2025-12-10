@@ -14,10 +14,12 @@ import com.swp391.clubmanagement.enums.RequestStatus;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.mapper.ClubApplicationMapper;
+import com.swp391.clubmanagement.enums.RoleType;
 import com.swp391.clubmanagement.repository.ClubApplicationRepository;
 import com.swp391.clubmanagement.repository.ClubRepository;
 import com.swp391.clubmanagement.repository.MembershipRepository;
 import com.swp391.clubmanagement.repository.RegisterRepository;
+import com.swp391.clubmanagement.repository.RoleRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,7 @@ public class ClubApplicationService {
     MembershipRepository membershipRepository;
     RegisterRepository registerRepository;
     UserRepository userRepository;
+    RoleRepository roleRepository;
     ClubApplicationMapper clubApplicationMapper;
     
     /**
@@ -203,6 +206,18 @@ public class ClubApplicationService {
             log.info("Founder {} automatically added as ChuTich of club {} with subscriptionId: {} and clubRole: {}", 
                     application.getCreator().getEmail(), newClub.getClubId(), 
                     founderRegistration.getSubscriptionId(), founderRegistration.getClubRole());
+            
+            // 4. Cập nhật Role của founder thành ChuTich trong bảng Users
+            Users founder = application.getCreator();
+            var chuTichRole = roleRepository.findByRoleName(RoleType.ChuTich)
+                    .orElseThrow(() -> {
+                        log.error("ChuTich role not found in database. Please check ApplicationInitConfig.");
+                        return new RuntimeException("ChuTich role not found in database");
+                    });
+            
+            founder.setRole(chuTichRole);
+            userRepository.save(founder);
+            log.info("Founder {} role updated to ChuTich", founder.getEmail());
         }
         
         application = clubApplicationRepository.save(application);

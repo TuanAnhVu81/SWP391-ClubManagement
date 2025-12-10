@@ -36,7 +36,7 @@ public class LeaderRegisterController {
      * Xem danh sách tất cả đơn đăng ký vào CLB mình
      */
     @GetMapping("/club/{clubId}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Danh sách đơn đăng ký CLB", description = "Xem danh sách tất cả đơn đăng ký vào CLB")
     public ApiResponse<List<RegisterResponse>> getClubRegistrations(@PathVariable Integer clubId) {
         return ApiResponse.<List<RegisterResponse>>builder()
@@ -49,7 +49,7 @@ public class LeaderRegisterController {
      * Xem danh sách đơn đăng ký theo trạng thái
      */
     @GetMapping("/club/{clubId}/status/{status}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Danh sách đơn theo trạng thái", description = "Xem danh sách đơn đăng ký theo trạng thái (ChoDuyet, DaDuyet, TuChoi...)")
     public ApiResponse<List<RegisterResponse>> getClubRegistrationsByStatus(
             @PathVariable Integer clubId,
@@ -64,7 +64,7 @@ public class LeaderRegisterController {
      * Duyệt đơn (DaDuyet) hoặc Từ chối (TuChoi)
      */
     @PutMapping("/approve")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Duyệt/Từ chối đơn", description = "Duyệt đơn (DaDuyet) hoặc Từ chối (TuChoi)")
     public ApiResponse<RegisterResponse> approveRegistration(@Valid @RequestBody ApproveRegisterRequest request) {
         String message = request.getStatus() == JoinStatus.DaDuyet 
@@ -81,7 +81,7 @@ public class LeaderRegisterController {
      * Xác nhận sinh viên đã đóng tiền
      */
     @PutMapping("/confirm-payment")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận sinh viên đã đóng tiền")
     public ApiResponse<RegisterResponse> confirmPayment(@Valid @RequestBody ConfirmPaymentRequest request) {
         return ApiResponse.<RegisterResponse>builder()
@@ -95,7 +95,7 @@ public class LeaderRegisterController {
      * Thăng chức/Hạ chức thành viên (VD: Từ ThanhVien lên PhoChuTich)
      */
     @PutMapping("/{regId}/role")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Thăng/hạ chức thành viên", description = "Thăng chức/Hạ chức thành viên (VD: Từ ThanhVien lên PhoChuTich)")
     public ApiResponse<RegisterResponse> changeRole(
             @PathVariable Integer regId,
@@ -114,7 +114,7 @@ public class LeaderRegisterController {
      * Xóa thành viên khỏi CLB (Kick) - đánh dấu DaRoiCLB
      */
     @DeleteMapping("/{regId}")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Kick thành viên", description = "Xóa thành viên khỏi CLB (Kick) - đánh dấu DaRoiCLB")
     public ApiResponse<Void> kickMember(@PathVariable Integer regId) {
         leaderRegisterService.kickMember(regId);

@@ -28,7 +28,14 @@ public class ApplicationInitConfig {
             if (roleRepository.count() == 0) {
                 roleRepository.save(Roles.builder().roleName(RoleType.QuanTriVien).build());
                 roleRepository.save(Roles.builder().roleName(RoleType.SinhVien).build());
+                roleRepository.save(Roles.builder().roleName(RoleType.ChuTich).build());
                 log.info("Default roles initialized.");
+            } else {
+                // Kiểm tra và thêm role ChuTich nếu chưa có (migration cho database đã có dữ liệu)
+                if (!roleRepository.findByRoleName(RoleType.ChuTich).isPresent()) {
+                    roleRepository.save(Roles.builder().roleName(RoleType.ChuTich).build());
+                    log.info("ChuTich role added to existing roles.");
+                }
             }
 
             // 2. Init Admin User if not exist

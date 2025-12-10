@@ -33,7 +33,7 @@ public class ClubApplicationController {
      * Sinh viên gửi đơn yêu cầu thành lập CLB mới
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Gửi đơn yêu cầu thành lập CLB mới", description = "Sinh viên gửi đơn yêu cầu thành lập CLB mới (Gửi vào bảng ClubApplications)")
     public ApiResponse<ClubApplicationResponse> createClubApplication(
             @Valid @RequestBody ClubApplicationRequest request) {
@@ -67,7 +67,7 @@ public class ClubApplicationController {
      * Sinh viên xem lịch sử các đơn mình đã gửi
      */
     @GetMapping("/my-requests")
-    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Xem lịch sử đơn đã gửi", description = "Xem lịch sử các đơn mình đã gửi")
     public ApiResponse<List<ClubApplicationResponse>> getMyApplications() {
         
