@@ -1,5 +1,6 @@
 package com.swp391.clubmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -48,7 +49,8 @@ public class Memberships {
     @Builder.Default
     LocalDateTime createdAt = LocalDateTime.now();
     
-    // Relationships
+    // Relationships - Ignore để tránh circular reference khi serialize JSON
+    @JsonIgnore
     @OneToMany(mappedBy = "membershipPackage")
     Set<Registers> registers;
 }
