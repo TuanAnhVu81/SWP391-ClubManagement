@@ -148,7 +148,7 @@ public class AuthenticationService {
                 .issuer("swp391.com") // Người phát hành token
                 .issueTime(new Date()) // Thời điểm phát hành
                 .expirationTime(new Date(
-                        Instant.now().plus(5, ChronoUnit.MINUTES).toEpochMilli() // Hết hạn sau 5 phút
+                        Instant.now().plus(2, ChronoUnit.HOURS).toEpochMilli() // Hết hạn sau 2 tiếng
                 ))
                 .claim("userId", user.getUserId()) // Thêm custom claim userId
                 .claim("scope", buildScope(user)) // Thêm claim scope (Role)

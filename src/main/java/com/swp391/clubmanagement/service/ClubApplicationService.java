@@ -208,7 +208,10 @@ public class ClubApplicationService {
                     founderRegistration.getSubscriptionId(), founderRegistration.getClubRole());
             
             // 4. Cập nhật Role của founder thành ChuTich trong bảng Users
-            Users founder = application.getCreator();
+            // Lấy lại user từ database để đảm bảo có entity mới nhất
+            Users founder = userRepository.findById(application.getCreator().getUserId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            
             var chuTichRole = roleRepository.findByRoleName(RoleType.ChuTich)
                     .orElseThrow(() -> {
                         log.error("ChuTich role not found in database. Please check ApplicationInitConfig.");
@@ -216,8 +219,10 @@ public class ClubApplicationService {
                     });
             
             founder.setRole(chuTichRole);
-            userRepository.save(founder);
-            log.info("Founder {} role updated to ChuTich", founder.getEmail());
+            founder = userRepository.save(founder);
+            userRepository.flush(); // Đảm bảo dữ liệu được flush vào database ngay lập tức
+            log.info("Founder {} role updated to ChuTich. Role ID: {}, Role Name: {}", 
+                    founder.getEmail(), founder.getRole().getRoleId(), founder.getRole().getRoleName());
         }
         
         application = clubApplicationRepository.save(application);

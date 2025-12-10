@@ -1,5 +1,6 @@
 package com.swp391.clubmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -40,12 +41,15 @@ public class Users {
     @Column(name = "email", nullable = false)
     String email;
 
+    @JsonIgnore
     @Column(name = "password")
     String password;
 
+    @JsonIgnore
     @Column(name = "verification_code")
     String verificationCode;
 
+    @JsonIgnore
     @Column(name = "verification_expiry")
     LocalDateTime verificationExpiry;
 
@@ -57,19 +61,24 @@ public class Users {
     @JoinColumn(name = "role_id", nullable = false)
     Roles role;
     
-    // Relationships
+    // Relationships - Ignore để tránh circular reference khi serialize JSON
+    @JsonIgnore
     @OneToMany(mappedBy = "creator")
     Set<ClubApplications> createdApplications;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "reviewer")
     Set<ClubApplications> reviewedApplications;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "founder")
     Set<Clubs> foundedClubs;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "user")
     Set<Registers> registers;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "approver")
     Set<Registers> approvedRegisters;
 }
