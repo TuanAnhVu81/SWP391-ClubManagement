@@ -27,6 +27,7 @@ public enum ErrorCode {
     PASSWORD_INVALID(2004, "Password must be at least 8 characters", HttpStatus.BAD_REQUEST),
     INVALID_EMAIL(2005, "Invalid email format", HttpStatus.BAD_REQUEST),
     EMAIL_NOT_EXIST(2006, "Email does not exist", HttpStatus.NOT_FOUND),
+    CANNOT_DELETE_FOUNDER(2007, "Cannot delete user who is founder of clubs. Please transfer ownership first.", HttpStatus.BAD_REQUEST),
     
     // --- Authentication & Authorization Errors (Lỗi xác thực & phân quyền - 3xxx) ---
     UNAUTHENTICATED(3001, "Unauthenticated", HttpStatus.UNAUTHORIZED), // Chưa đăng nhập hoặc token không hợp lệ

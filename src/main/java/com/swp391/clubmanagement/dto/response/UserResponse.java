@@ -19,4 +19,5 @@ public class UserResponse {
     String studentCode;
     RoleType role;
     boolean isActive;
+    LocalDateTime createdAt;
 }

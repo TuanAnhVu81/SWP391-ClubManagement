@@ -116,6 +116,17 @@ public class UserController {
                 .build();
     }
 
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')") // Chỉ Admin được xóa
+    @Operation(summary = "Xóa user (Admin only)",
+            description = "Xóa (deactivate) tài khoản người dùng. Chỉ dành cho Admin. Đây là soft delete - user sẽ được đánh dấu là inactive nhưng dữ liệu vẫn được giữ lại. Không thể xóa user đang là founder của CLB.")
+    public ApiResponse<Void> deleteUser(@PathVariable String userId) {
+        userService.deleteUser(userId);
+        return ApiResponse.<Void>builder()
+                .message("Xóa user thành công")
+                .build();
+    }
+
     /**
      * Trang HTML thông báo xác thực thành công
      * (Đã đổi % thành %% để an toàn nếu sau này dùng .formatted)

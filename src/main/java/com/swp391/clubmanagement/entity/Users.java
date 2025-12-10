@@ -57,6 +57,10 @@ public class Users {
     @Builder.Default
     boolean enabled = false;
     
+    @Column(name = "is_active")
+    @Builder.Default
+    Boolean isActive = true;
+    
     @Column(name = "created_at")
     @Builder.Default
     LocalDateTime createdAt = LocalDateTime.now();

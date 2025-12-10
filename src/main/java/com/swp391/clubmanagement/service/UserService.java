@@ -163,6 +163,24 @@ public class UserService {
                 .map(userMapper::toUserResponse);
     }
 
+    /**
+     * Xóa user (Admin only) - Soft delete
+     * Không xóa user đang là founder của CLB
+     */
+    public void deleteUser(String userId) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra user có phải founder của CLB nào không
+        if (user.getFoundedClubs() != null && !user.getFoundedClubs().isEmpty()) {
+            throw new AppException(ErrorCode.CANNOT_DELETE_FOUNDER);
+        }
+
+        // Soft delete: set is_active = false
+        user.setIsActive(false);
+        userRepository.save(user);
+    }
+
     public Users updateUser(UserUpdateRequest request) {
         Users user = getMyInfo();
         userMapper.updateUser(user, request);
