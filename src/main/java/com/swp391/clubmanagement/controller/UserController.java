@@ -1,9 +1,6 @@
 package com.swp391.clubmanagement.controller;
 
-import com.swp391.clubmanagement.dto.request.ForgotPasswordRequest;
-import com.swp391.clubmanagement.dto.request.UserCreationRequest;
-import com.swp391.clubmanagement.dto.request.UserUpdateRequest;
-import com.swp391.clubmanagement.dto.request.VerifyEmailRequest;
+import com.swp391.clubmanagement.dto.request.*;
 import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.exception.AppException;
@@ -67,6 +64,16 @@ public class UserController {
         userService.forgotPassword(request);
         return ApiResponse.<String>builder()
                 .result("Mật khẩu mới đã được gửi đến email của bạn")
+                .build();
+    }
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Đổi mật khẩu",
+            description = "Đổi mật khẩu cho người dùng đang đăng nhập. Yêu cầu nhập mật khẩu cũ và mật khẩu mới.")
+    ApiResponse<String> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        userService.changePassword(request);
+        return ApiResponse.<String>builder()
+                .result("Đổi mật khẩu thành công")
                 .build();
     }
 

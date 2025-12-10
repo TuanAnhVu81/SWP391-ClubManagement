@@ -1,9 +1,6 @@
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.dto.request.ForgotPasswordRequest;
-import com.swp391.clubmanagement.dto.request.UserCreationRequest;
-import com.swp391.clubmanagement.dto.request.UserUpdateRequest;
-import com.swp391.clubmanagement.dto.request.VerifyEmailRequest;
+import com.swp391.clubmanagement.dto.request.*;
 import com.swp391.clubmanagement.entity.Roles;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.RoleType;
@@ -130,6 +127,23 @@ public class UserService {
         userRepository.save(user);
 
         emailService.sendForgotPasswordEmail(user.getEmail(), user.getFullName(), newPassword);
+    }
+
+    /**
+     * Đổi mật khẩu (Yêu cầu User phải đang đăng nhập)
+     */
+    public void changePassword(ChangePasswordRequest request) {
+        // 1. Lấy thông tin user đang đăng nhập
+        Users user = getMyInfo();
+
+        // 2. Kiểm tra mật khẩu cũ có đúng không
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.WRONG_PASSWORD);
+        }
+
+        // 3. Mã hóa và lưu mật khẩu mới
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     public Users getMyInfo() {
