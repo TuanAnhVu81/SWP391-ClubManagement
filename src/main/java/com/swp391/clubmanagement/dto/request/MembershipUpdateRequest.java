@@ -17,6 +17,9 @@ public class MembershipUpdateRequest {
     
     @NotBlank(message = "Tên gói không được để trống")
     String packageName;
+
+    @NotBlank(message = "Thời hạn không được để trống")
+    String term; // Ví dụ: "1 semester", "1 year", "6 months"
     
     @NotNull(message = "Giá không được để trống")
     @DecimalMin(value = "0.0", message = "Giá phải lớn hơn hoặc bằng 0")

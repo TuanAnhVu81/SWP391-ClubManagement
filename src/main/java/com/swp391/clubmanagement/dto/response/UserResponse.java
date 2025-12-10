@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -20,4 +21,7 @@ public class UserResponse {
     RoleType role;
     boolean isActive;
     LocalDateTime createdAt;
+    
+    // Danh sách ID các CLB mà user đang là thành viên chính thức
+    List<Integer> clubIds;
 }

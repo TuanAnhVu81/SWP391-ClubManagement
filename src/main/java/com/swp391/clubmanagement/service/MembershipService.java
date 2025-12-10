@@ -133,6 +133,7 @@ public class MembershipService {
         
         // Cập nhật thông tin
         membership.setPackageName(request.getPackageName());
+        membership.setTerm(request.getTerm());
         membership.setPrice(request.getPrice());
         if (request.getDescription() != null) {
             membership.setDescription(request.getDescription());

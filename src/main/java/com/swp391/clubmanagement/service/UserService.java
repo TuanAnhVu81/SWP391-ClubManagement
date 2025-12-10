@@ -157,6 +157,14 @@ public class UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
+    /**
+     * Lấy thông tin cá nhân của user hiện tại (dạng UserResponse với clubIds)
+     */
+    public UserResponse getMyInfoResponse() {
+        Users user = getMyInfo();
+        return userMapper.toUserResponse(user);
+    }
+
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable)

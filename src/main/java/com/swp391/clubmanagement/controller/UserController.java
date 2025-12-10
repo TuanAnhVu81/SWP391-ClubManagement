@@ -87,18 +87,19 @@ public class UserController {
     @GetMapping("/my-info")
     @Operation(summary = "Xem thông tin cá nhân", 
                description = "Xem thông tin cá nhân của người dùng hiện tại (thông tin được lấy từ JWT token).")
-    ApiResponse<Users> getMyInfo() {
-        return ApiResponse.<Users>builder()
-                .result(userService.getMyInfo())
+    ApiResponse<UserResponse> getMyInfo() {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.getMyInfoResponse())
                 .build();
     }
 
     @PutMapping("/my-info")
     @Operation(summary = "Cập nhật thông tin cá nhân", 
                description = "Cập nhật thông tin cá nhân của người dùng hiện tại (tên, số điện thoại, avatar, v.v.).")
-    ApiResponse<Users> updateMyInfo(@RequestBody UserUpdateRequest request) {
-        return ApiResponse.<Users>builder()
-                .result(userService.updateUser(request))
+    ApiResponse<UserResponse> updateMyInfo(@RequestBody UserUpdateRequest request) {
+        Users user = userService.updateUser(request);
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.getMyInfoResponse())
                 .build();
     }
 
