@@ -36,12 +36,14 @@ public class SecurityConfig {
     private final String[] PUBLIC_POST_ENDPOINTS = {
             "/users", "/users/verify", "/users/forgot-password",
             "/auth/login", "/auth/token", "/auth/introspect", 
-            "/auth/logout", "/auth/refresh"
+            "/auth/logout", "/auth/refresh",
+            "/payments/webhook" // PayOS webhook callback
     };
 
     // Danh sách các API GET public (xác thực email, xem CLB, xem gói...)
     private final String[] PUBLIC_GET_ENDPOINTS = {
-            "/users/verify", "/clubs", "/clubs/**", "/packages", "/packages/**"
+            "/users/verify", "/clubs", "/clubs/**", "/packages", "/packages/**",
+            "/payments/success", "/payments/cancel" // Payment redirect pages
     };
     
     // Danh sách các endpoint cho Swagger UI (Tài liệu API)

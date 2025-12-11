@@ -62,6 +62,12 @@ public enum ErrorCode {
     INVALID_REQUEST(7001, "Invalid request", HttpStatus.BAD_REQUEST),
     MISSING_REQUIRED_FIELD(7002, "Missing required field", HttpStatus.BAD_REQUEST),
     INVALID_DATE_FORMAT(7003, "Invalid date format", HttpStatus.BAD_REQUEST),
+    
+    // --- Payment Related Errors (Lỗi thanh toán - 8xxx) ---
+    PAYMENT_LINK_CREATION_FAILED(8001, "Failed to create payment link", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_PAYMENT_SIGNATURE(8002, "Invalid payment signature", HttpStatus.BAD_REQUEST),
+    PAYMENT_NOT_FOUND(8003, "Payment not found", HttpStatus.NOT_FOUND),
+    PAYMENT_ALREADY_PROCESSED(8004, "Payment already processed", HttpStatus.BAD_REQUEST),
     ;
     
     private final int code;           // Mã lỗi nội bộ (Business Code)

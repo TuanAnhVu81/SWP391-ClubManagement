@@ -53,6 +53,16 @@ public class Registers {
     @Column(name = "payment_method")
     String paymentMethod;
     
+    // Thông tin PayOS
+    @Column(name = "payos_order_code")
+    Long payosOrderCode;
+    
+    @Column(name = "payos_payment_link_id")
+    String payosPaymentLinkId;
+    
+    @Column(name = "payos_reference")
+    String payosReference;
+    
     // Vai trò & Hiệu lực
     @Enumerated(EnumType.STRING)
     @Column(name = "club_role")

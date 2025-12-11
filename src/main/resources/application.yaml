@@ -41,6 +41,12 @@ app:
   base-url: "https://clubmanage.azurewebsites.net/api"
 #  base-url: "http://localhost:8081/api"
 
+payos:
+  client-id: "5301efbb-b43e-43f5-96fe-2833b57cedfb"
+  api-key: "caec2c2d-3871-4763-8ff4-640947354555"
+  checksum-key: "612d045d9a61205789f3b47e1b996374829793ea0569bc34b8f86314ba35c13b"
+  api-url: "https://api-merchant.payos.vn"
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
