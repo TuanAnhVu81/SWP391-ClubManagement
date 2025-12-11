@@ -58,15 +58,29 @@ public class PayOSService {
     public PayOSPaymentLinkResponse createPaymentLink(PayOSCreatePaymentRequest request) {
         try {
             String url = apiUrl + "/v2/payment-requests";
-            
+
+            String dataStr = String.format(
+                    "amount=%d&cancelUrl=%s&description=%s&orderCode=%d&returnUrl=%s",
+                    request.getAmount(),
+                    request.getCancelUrl(),
+                    request.getDescription(),
+                    request.getOrderCode(),
+                    request.getReturnUrl()
+            );
+
+            String signature = createSignature(dataStr);
+            request.setSignature(signature);
+
+            log.info("Creating payment link with signature: {}", signature);
+
             log.info("Creating payment link: orderCode={}, amount={}, description={}, returnUrl={}, cancelUrl={}, expiredAt={}", 
                     request.getOrderCode(), request.getAmount(), request.getDescription(), 
                     request.getReturnUrl(), request.getCancelUrl(), request.getExpiredAt());
             
             // Validate request
-            if (request.getOrderCode() == null || request.getOrderCode() <= 0) {
+            if (request.getOrderCode() == null || request.getOrderCode() <= 0L) {
                 log.error("Invalid orderCode: {}", request.getOrderCode());
-                throw new AppException(ErrorCode.INVALID_REQUEST, "orderCode must be a positive integer");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "orderCode must be a positive number");
             }
             if (request.getAmount() == null || request.getAmount() <= 0) {
                 log.error("Invalid amount: {}", request.getAmount());
@@ -105,10 +119,15 @@ public class PayOSService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 PayOSPaymentLinkResponse body = response.getBody();
                 
+                log.info("PayOS API Response: code={}, desc={}, data={}", 
+                        body.getCode(), body.getDesc(), body.getData() != null ? "present" : "null");
+                
                 // Kiểm tra response có code = "00" (thành công)
                 if (body.getCode() == null || !"00".equals(body.getCode())) {
-                    log.error("PayOS API returned error: code={}, desc={}", body.getCode(), body.getDesc());
-                    throw new AppException(ErrorCode.PAYMENT_LINK_CREATION_FAILED);
+                    log.error("PayOS API returned error: code={}, desc={}, full response={}", 
+                            body.getCode(), body.getDesc(), body);
+                    throw new AppException(ErrorCode.PAYMENT_LINK_CREATION_FAILED, 
+                            "PayOS error: " + body.getDesc());
                 }
                 
                 // PayOS không gửi signature trong payment link creation response
@@ -121,7 +140,7 @@ public class PayOSService {
             } else {
                 log.error("Failed to create payment link: status={}, body={}", 
                         response.getStatusCode(), 
-                        response.getBody() != null ? "present" : "null");
+                        response.getBody());
                 throw new AppException(ErrorCode.PAYMENT_LINK_CREATION_FAILED);
             }
         } catch (HttpClientErrorException e) {
@@ -226,6 +245,21 @@ public class PayOSService {
             result.append(String.format("%02x", b));
         }
         return result.toString();
+    }
+
+    private String createSignature(String dataStr) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(checksumKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(secretKeySpec);
+            byte[] hash = mac.doFinal(dataStr.getBytes(StandardCharsets.UTF_8));
+            return bytesToHex(hash);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            // Log lỗi để debug
+            log.error("Error creating signature: {}", e.getMessage());
+            // Ném RuntimeException để code biên dịch được
+            throw new RuntimeException("Cannot create signature: " + e.getMessage(), e);
+        }
     }
 }
 

@@ -94,23 +94,26 @@ public class PayOSController {
         }
         
         // Tạo order code từ subscription ID (đảm bảo unique)
-        // PayOS yêu cầu orderCode là số nguyên dương, tối đa 19 chữ số
-        // Sử dụng subscriptionId * 10000 + timestamp (4 chữ số cuối) để tránh duplicate
-        // Thêm random để đảm bảo unique hơn
+        // Lấy 6 số cuối của timestamp hiện tại để đảm bảo tính thời gian
+        // Kết hợp với subscriptionId ở đầu để đảm bảo unique theo đơn hàng
         long timestamp = System.currentTimeMillis();
-        int randomSuffix = (int)(Math.random() * 1000); // 0-999
-        int orderCode = register.getSubscriptionId() * 10000 + (int)(timestamp % 10000) + randomSuffix;
+        String timeStr = String.valueOf(timestamp);
+        String timeSuffix = timeStr.substring(timeStr.length() - 6);
+
+        // Ví dụ: subId = 3, time = ...123456 -> orderCode = 3123456
+        long orderCode = Long.parseLong(register.getSubscriptionId() + timeSuffix);
         
-        // Đảm bảo orderCode là số dương và không quá lớn
+        // Đảm bảo orderCode là số dương
         if (orderCode <= 0) {
-            orderCode = Math.abs(orderCode) + 1;
+            orderCode = Math.abs(orderCode);
         }
         
         // Kiểm tra orderCode đã tồn tại chưa (tránh duplicate)
         int maxRetries = 5;
         int retryCount = 0;
-        while (registerRepository.findByPayosOrderCode((long) orderCode).isPresent() && retryCount < maxRetries) {
-            orderCode = register.getSubscriptionId() * 10000 + (int)(timestamp % 10000) + (int)(Math.random() * 1000);
+        while (registerRepository.findByPayosOrderCode(orderCode).isPresent() && retryCount < maxRetries) {
+            // Thêm random nếu bị trùng
+            orderCode = timestamp * 100000L + register.getSubscriptionId() + (long)(Math.random() * 10000);
             retryCount++;
         }
         
@@ -134,21 +137,33 @@ public class PayOSController {
                 ? "https://pay.payos.vn" 
                 : baseUrl + "/payments/cancel";
         
-        // Tính expiredAt (Unix timestamp - số giây từ 1970-01-01)
-        // PayOS yêu cầu expiredAt là timestamp trong tương lai
-        long expiredAt = Instant.now().plusSeconds(3600).getEpochSecond();
+        // Tạo items array (required by PayOS API)
+        // PayOS giới hạn description tối đa 25 ký tự
+        String description = "Phi CLB #" + register.getSubscriptionId();
+        
+        PayOSCreatePaymentRequest.ItemData item = PayOSCreatePaymentRequest.ItemData.builder()
+                .name(register.getMembershipPackage().getPackageName())
+                .quantity(1)
+                .price(amount)
+                .build();
         
         PayOSCreatePaymentRequest payOSRequest = PayOSCreatePaymentRequest.builder()
                 .orderCode(orderCode)
                 .amount(amount)
-                .description("Thanh toán đăng ký CLB: " + register.getMembershipPackage().getPackageName())
+                .description(description)
+                .items(java.util.Collections.singletonList(item))
                 .returnUrl(returnUrl)
                 .cancelUrl(cancelUrl)
-                .expiredAt(expiredAt)
                 .build();
         
-        log.info("PayOS request: orderCode={}, amount={}, returnUrl={}, cancelUrl={}", 
-                orderCode, amount, returnUrl, cancelUrl);
+        log.info("=== PayOS Payment Request ===");
+        log.info("OrderCode: {}", orderCode);
+        log.info("Amount: {}", amount);
+        log.info("Description: {}", description);
+        log.info("Items: {}", payOSRequest.getItems());
+        log.info("ReturnUrl: {}", returnUrl);
+        log.info("CancelUrl: {}", cancelUrl);
+        log.info("============================");
         
         // Gọi PayOS API
         PayOSPaymentLinkResponse payOSResponse;
