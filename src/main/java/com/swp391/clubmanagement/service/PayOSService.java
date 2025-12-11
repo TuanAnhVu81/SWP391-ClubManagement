@@ -169,21 +169,30 @@ public class PayOSService {
     /**
      * Verify webhook signature
      * PayOS webhook signature được tạo từ: amount, orderCode, description
+     * Theo tài liệu PayOS, signature được tính từ data object
      */
     public boolean verifyWebhookSignature(String code, String desc, PayOSWebhookData.WebhookData data, String signature) {
         try {
             if (data == null || signature == null || signature.isEmpty()) {
+                log.warn("Webhook signature verification failed: data or signature is null");
                 return false;
             }
             
             // PayOS webhook signature được tạo từ các trường trong data
-            // Format: amount + orderCode + description
+            // Format theo PayOS: amount + orderCode + description (theo thứ tự)
+            // URL encode description nếu có ký tự đặc biệt
+            String description = data.getDescription() != null ? data.getDescription() : "";
+            
+            // Tạo data string để verify signature
+            // PayOS có thể dùng format: amount + orderCode + description
             String dataStr = String.format(
                     "amount=%d&description=%s&orderCode=%d",
-                    data.getAmount(),
-                    data.getDescription() != null ? data.getDescription() : "",
-                    data.getOrderCode()
+                    data.getAmount() != null ? data.getAmount() : 0,
+                    description,
+                    data.getOrderCode() != null ? data.getOrderCode() : 0L
             );
+            
+            log.debug("Verifying webhook signature with data: {}", dataStr);
             
             // Tạo signature bằng HMAC SHA256
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -192,9 +201,18 @@ public class PayOSService {
             byte[] hash = mac.doFinal(dataStr.getBytes(StandardCharsets.UTF_8));
             String calculatedSignature = bytesToHex(hash);
             
-            return calculatedSignature.equalsIgnoreCase(signature);
+            boolean isValid = calculatedSignature.equalsIgnoreCase(signature);
+            
+            if (!isValid) {
+                log.warn("Webhook signature mismatch. Expected: {}, Received: {}", calculatedSignature, signature);
+            }
+            
+            return isValid;
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             log.error("Error verifying webhook signature", e);
+            return false;
+        } catch (Exception e) {
+            log.error("Unexpected error verifying webhook signature", e);
             return false;
         }
     }
