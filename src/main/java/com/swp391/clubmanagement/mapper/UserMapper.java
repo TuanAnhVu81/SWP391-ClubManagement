@@ -3,10 +3,8 @@ package com.swp391.clubmanagement.mapper;
 import com.swp391.clubmanagement.dto.request.UserCreationRequest;
 import com.swp391.clubmanagement.dto.request.UserUpdateRequest;
 import com.swp391.clubmanagement.dto.response.UserResponse;
-import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.JoinStatus;
-import com.swp391.clubmanagement.enums.RoleType;
 import org.mapstruct.*;
 
 import java.util.List;

@@ -45,6 +45,9 @@ public interface RegisterRepository extends JpaRepository<Registers, Integer> {
     Optional<Registers> findByUserAndMembershipPackage_Club_ClubIdAndClubRoleIn(
             Users user, Integer clubId, List<ClubRoleType> roles);
     
+    // Tìm đăng ký theo PayOS order code
+    Optional<Registers> findByPayosOrderCode(Long orderCode);
+    
     // ============ THỐNG KÊ CHO ADMIN DASHBOARD ============
     
     // Đếm tổng số thành viên chính thức (đã duyệt + đã thanh toán)
