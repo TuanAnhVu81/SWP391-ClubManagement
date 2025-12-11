@@ -18,6 +18,7 @@ public interface UserMapper {
 
     @Mapping(target = "role", expression = "java(user.getRole() != null ? user.getRole().getRoleName() : null)")
     @Mapping(target = "isActive", source = "isActive")
+    @Mapping(target = "major", source = "major")
     @Mapping(target = "clubIds", ignore = true)
     UserResponse toUserResponse(Users user);
 

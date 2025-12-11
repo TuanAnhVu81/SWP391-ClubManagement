@@ -18,6 +18,7 @@ public class UserResponse {
     String email;
     String phoneNumber;
     String studentCode;
+    String major;
     RoleType role;
     boolean isActive;
     LocalDateTime createdAt;
