@@ -55,7 +55,14 @@ public class ClubService {
         }
         
         return clubs.stream()
-                .map(clubMapper::toResponse)
+                .map(club -> {
+                    ClubResponse response = clubMapper.toResponse(club);
+                    // Đếm tổng số thành viên chính thức (đã duyệt và đã đóng phí)
+                    long totalMembers = registerRepository.countByMembershipPackage_Club_ClubIdAndStatusAndIsPaid(
+                            club.getClubId(), JoinStatus.DaDuyet, true);
+                    response.setTotalMembers(totalMembers);
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
     

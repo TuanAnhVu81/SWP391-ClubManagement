@@ -48,6 +48,9 @@ public interface RegisterRepository extends JpaRepository<Registers, Integer> {
     // Tìm đăng ký theo PayOS order code
     Optional<Registers> findByPayosOrderCode(Long orderCode);
     
+    // Đếm số thành viên chính thức của một CLB (đã duyệt và đã đóng phí)
+    long countByMembershipPackage_Club_ClubIdAndStatusAndIsPaid(Integer clubId, JoinStatus status, Boolean isPaid);
+    
     // ============ THỐNG KÊ CHO ADMIN DASHBOARD ============
     
     // Đếm tổng số thành viên chính thức (đã duyệt + đã thanh toán)

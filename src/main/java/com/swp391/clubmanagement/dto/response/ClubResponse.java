@@ -28,4 +28,7 @@ public class ClubResponse {
     String founderId;
     String founderName;
     String founderStudentCode;
+    
+    // Tổng số thành viên chính thức (đã duyệt và đã đóng phí)
+    Long totalMembers;
 }
