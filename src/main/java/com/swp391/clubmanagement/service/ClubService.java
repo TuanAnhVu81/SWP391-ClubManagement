@@ -73,7 +73,14 @@ public class ClubService {
         Clubs club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new AppException(ErrorCode.CLUB_NOT_FOUND));
         
-        return clubMapper.toResponse(club);
+        ClubResponse response = clubMapper.toResponse(club);
+        
+        // Đếm tổng số thành viên chính thức (đã duyệt và đã đóng phí)
+        long totalMembers = registerRepository.countByMembershipPackage_Club_ClubIdAndStatusAndIsPaid(
+                clubId, JoinStatus.DaDuyet, true);
+        response.setTotalMembers(totalMembers);
+        
+        return response;
     }
     
     /**

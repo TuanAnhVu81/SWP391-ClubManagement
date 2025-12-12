@@ -1,6 +1,7 @@
 package com.swp391.clubmanagement.service;
 
 import com.swp391.clubmanagement.dto.request.PayOSCreatePaymentRequest;
+import com.swp391.clubmanagement.dto.response.ConfirmWebhookResponse;
 import com.swp391.clubmanagement.dto.response.PayOSPaymentLinkResponse;
 import com.swp391.clubmanagement.dto.response.PayOSWebhookData;
 import com.swp391.clubmanagement.exception.AppException;
@@ -259,6 +260,82 @@ public class PayOSService {
             log.error("Error creating signature: {}", e.getMessage());
             // Ném RuntimeException để code biên dịch được
             throw new RuntimeException("Cannot create signature: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Confirm webhook URL với PayOS
+     * PayOS sẽ gửi GET request đến webhookUrl để verify
+     */
+    public ConfirmWebhookResponse confirmWebhook(String webhookUrl) {
+        try {
+            String url = apiUrl + "/confirm-webhook";
+            
+            log.info("Confirming webhook URL with PayOS: {}", webhookUrl);
+            
+            // Tạo request body
+            java.util.Map<String, String> requestBody = new java.util.HashMap<>();
+            requestBody.put("webhookUrl", webhookUrl);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("x-client-id", clientId);
+            headers.set("x-api-key", apiKey);
+            
+            HttpEntity<java.util.Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+            
+            log.info("PayOS Confirm Webhook Request URL: {}", url);
+            log.info("PayOS Confirm Webhook Request Body: {}", requestBody);
+            
+            ResponseEntity<ConfirmWebhookResponse> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    ConfirmWebhookResponse.class
+            );
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                ConfirmWebhookResponse body = response.getBody();
+                
+                log.info("PayOS Confirm Webhook Response: code={}, desc={}, data={}", 
+                        body.getCode(), body.getDescription(), body.getData());
+                
+                // Kiểm tra response có code = "00" (thành công)
+                if (body.getCode() == null || !"00".equals(body.getCode())) {
+                    log.error("PayOS confirm webhook failed: code={}, desc={}", 
+                            body.getCode(), body.getDescription());
+                    throw new AppException(ErrorCode.INVALID_REQUEST, 
+                            "PayOS confirm webhook failed: " + body.getDescription());
+                }
+                
+                log.info("✅ Webhook confirmed successfully: {}", webhookUrl);
+                return body;
+            } else {
+                log.error("Failed to confirm webhook: status={}, body={}", 
+                        response.getStatusCode(), 
+                        response.getBody());
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Failed to confirm webhook with PayOS");
+            }
+        } catch (HttpClientErrorException e) {
+            log.error("PayOS confirm webhook client error: status={}, body={}", 
+                    e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new AppException(ErrorCode.INVALID_REQUEST, 
+                    "PayOS confirm webhook error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+        } catch (HttpServerErrorException e) {
+            log.error("PayOS confirm webhook server error: status={}, body={}", 
+                    e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new AppException(ErrorCode.INVALID_REQUEST, 
+                    "PayOS server error: " + e.getStatusCode());
+        } catch (RestClientException e) {
+            log.error("PayOS confirm webhook connection error: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.INVALID_REQUEST, 
+                    "Cannot connect to PayOS API: " + e.getMessage());
+        } catch (AppException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error confirming webhook", e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                    "Unexpected error: " + e.getMessage());
         }
     }
 }
