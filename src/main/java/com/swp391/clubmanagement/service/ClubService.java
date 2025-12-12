@@ -25,6 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
@@ -212,9 +214,15 @@ public class ClubService {
                 .filter(r -> r.getClubRole() == ClubRoleType.ThanhVien)
                 .count();
         
-        // Thống kê tài chính
+        // Thống kê tài chính - Tính doanh thu theo tháng (chỉ tính những người đã trả tiền)
+        YearMonth currentMonth = YearMonth.now();
         BigDecimal totalRevenue = allRegisters.stream()
-                .filter(r -> r.getIsPaid())
+                .filter(r -> r.getIsPaid() && r.getPaymentDate() != null)
+                .filter(r -> {
+                    LocalDateTime paymentDate = r.getPaymentDate();
+                    YearMonth paymentMonth = YearMonth.from(paymentDate);
+                    return paymentMonth.equals(currentMonth);
+                })
                 .map(r -> r.getMembershipPackage().getPrice())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
