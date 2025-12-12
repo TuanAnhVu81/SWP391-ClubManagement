@@ -110,14 +110,16 @@ public class LeaderRegisterController {
     }
     
     /**
-     * DELETE /api/registrations/{regId}
+     * DELETE /api/registrations/club/{clubId}/user/{userId}
      * Xóa thành viên khỏi CLB (Kick) - đánh dấu DaRoiCLB
      */
-    @DeleteMapping("/{regId}")
+    @DeleteMapping("/club/{clubId}/user/{userId}")
     @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Kick thành viên", description = "Xóa thành viên khỏi CLB (Kick) - đánh dấu DaRoiCLB")
-    public ApiResponse<Void> kickMember(@PathVariable Integer regId) {
-        leaderRegisterService.kickMember(regId);
+    public ApiResponse<Void> kickMember(
+            @PathVariable Integer clubId,
+            @PathVariable String userId) {
+        leaderRegisterService.kickMember(clubId, userId);
         
         return ApiResponse.<Void>builder()
                 .message("Đã xóa thành viên khỏi CLB thành công")

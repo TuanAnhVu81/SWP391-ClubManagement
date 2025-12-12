@@ -5,6 +5,7 @@ import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.dto.response.ClubMemberResponse;
 import com.swp391.clubmanagement.dto.response.ClubResponse;
 import com.swp391.clubmanagement.dto.response.ClubStatsResponse;
+import com.swp391.clubmanagement.dto.response.JoinedClubResponse;
 import com.swp391.clubmanagement.enums.ClubCategory;
 import com.swp391.clubmanagement.service.ClubService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -114,6 +115,23 @@ public class ClubController {
         
         return ApiResponse.<ClubStatsResponse>builder()
                 .result(response)
+                .build();
+    }
+    
+    /**
+     * GET /api/clubs/user/{userId}/joined
+     * Lấy danh sách CLB mà student đã tham gia (đã duyệt và đã đóng phí)
+     * Public API - có thể cần authentication tùy vào yêu cầu
+     */
+    @GetMapping("/user/{userId}/joined")
+    @Operation(summary = "Danh sách CLB đã tham gia", 
+               description = "Lấy danh sách CLB mà student đã tham gia (đã duyệt và đã đóng phí)")
+    public ApiResponse<List<JoinedClubResponse>> getJoinedClubs(@PathVariable String userId) {
+        
+        List<JoinedClubResponse> responses = clubService.getJoinedClubsByUser(userId);
+        
+        return ApiResponse.<List<JoinedClubResponse>>builder()
+                .result(responses)
                 .build();
     }
 }

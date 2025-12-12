@@ -21,6 +21,9 @@ public interface RegisterRepository extends JpaRepository<Registers, Integer> {
     // Tìm đăng ký theo user và trạng thái
     List<Registers> findByUserAndStatus(Users user, JoinStatus status);
     
+    // Tìm các đăng ký của user đã tham gia CLB (đã duyệt và đã đóng phí)
+    List<Registers> findByUserAndStatusAndIsPaid(Users user, JoinStatus status, Boolean isPaid);
+    
     // Kiểm tra user đã đăng ký gói này chưa
     boolean existsByUserAndMembershipPackage_PackageId(Users user, Integer packageId);
     

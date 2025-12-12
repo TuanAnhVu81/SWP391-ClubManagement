@@ -273,17 +273,19 @@ public class LeaderRegisterService {
      * Set status = DaRoiCLB để đánh dấu đã rời khỏi CLB
      */
     @Transactional
-    public void kickMember(Integer subscriptionId) {
+    public void kickMember(Integer clubId, String userId) {
         Users currentUser = getCurrentUser();
-        
-        // Lấy đơn đăng ký
-        Registers register = registerRepository.findById(subscriptionId)
-                .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
-        
-        Integer clubId = register.getMembershipPackage().getClub().getClubId();
         
         // Kiểm tra quyền Leader
         validateLeaderRole(currentUser, clubId);
+        
+        // Lấy user cần xóa
+        Users userToKick = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Lấy đơn đăng ký của user trong club
+        Registers register = registerRepository.findByUserAndMembershipPackage_Club_ClubId(userToKick, clubId)
+                .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
         
         // Kiểm tra thành viên phải đang active (DaDuyet)
         if (register.getStatus() != JoinStatus.DaDuyet) {
@@ -294,8 +296,8 @@ public class LeaderRegisterService {
         register.setStatus(JoinStatus.DaRoiCLB);
         
         registerRepository.save(register);
-        log.info("Member kicked from club: subscriptionId={}, user={}, clubId={}, by={}", 
-                subscriptionId, register.getUser().getEmail(), clubId, currentUser.getEmail());
+        log.info("Member kicked from club: userId={}, user={}, clubId={}, by={}", 
+                userId, userToKick.getEmail(), clubId, currentUser.getEmail());
     }
 }
 
