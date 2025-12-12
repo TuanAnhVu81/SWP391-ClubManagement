@@ -214,11 +214,17 @@ public class ClubService {
                 .filter(r -> r.getClubRole() == ClubRoleType.ThanhVien)
                 .count();
         
-        // Thống kê tài chính - Tính doanh thu theo tháng (chỉ tính những người đã trả tiền)
+        // Thống kê tài chính - Tính doanh thu theo tháng (chỉ tính những người đã trả tiền, trừ founder)
+        Users founder = club.getFounder();
         YearMonth currentMonth = YearMonth.now();
         BigDecimal totalRevenue = allRegisters.stream()
                 .filter(r -> r.getIsPaid() && r.getPaymentDate() != null)
                 .filter(r -> {
+                    // Loại trừ tiền của founder
+                    if (founder != null && r.getUser().getUserId().equals(founder.getUserId())) {
+                        return false;
+                    }
+                    // Chỉ tính thanh toán trong tháng hiện tại
                     LocalDateTime paymentDate = r.getPaymentDate();
                     YearMonth paymentMonth = YearMonth.from(paymentDate);
                     return paymentMonth.equals(currentMonth);
