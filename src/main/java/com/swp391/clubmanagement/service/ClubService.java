@@ -4,6 +4,7 @@ import com.swp391.clubmanagement.dto.request.ClubUpdateRequest;
 import com.swp391.clubmanagement.dto.response.ClubMemberResponse;
 import com.swp391.clubmanagement.dto.response.ClubResponse;
 import com.swp391.clubmanagement.dto.response.ClubStatsResponse;
+import com.swp391.clubmanagement.dto.response.JoinedClubResponse;
 import com.swp391.clubmanagement.entity.Clubs;
 import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
@@ -269,5 +270,47 @@ public class ClubService {
                 .unpaidCount(unpaidCount)
                 .unpaidMembers(unpaidMembers)
                 .build();
+    }
+    
+    /**
+     * Lấy danh sách CLB mà student đã tham gia (đã duyệt và đã đóng phí)
+     * @param userId ID của user (student)
+     * @return Danh sách CLB mà user đã tham gia
+     */
+    public List<JoinedClubResponse> getJoinedClubsByUser(String userId) {
+        // Lấy user
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Lấy tất cả đăng ký của user đã tham gia (DaDuyet và đã đóng phí)
+        List<Registers> registers = registerRepository.findByUserAndStatusAndIsPaid(
+                user, JoinStatus.DaDuyet, true);
+        
+        // Chuyển đổi sang JoinedClubResponse
+        return registers.stream()
+                .map(register -> {
+                    Clubs club = register.getMembershipPackage().getClub();
+                    ClubResponse clubResponse = clubMapper.toResponse(club);
+                    
+                    return JoinedClubResponse.builder()
+                            .clubId(clubResponse.getClubId())
+                            .clubName(clubResponse.getClubName())
+                            .category(clubResponse.getCategory())
+                            .logo(clubResponse.getLogo())
+                            .location(clubResponse.getLocation())
+                            .description(clubResponse.getDescription())
+                            .email(clubResponse.getEmail())
+                            .isActive(clubResponse.getIsActive())
+                            .establishedDate(clubResponse.getEstablishedDate())
+                            .founderId(clubResponse.getFounderId())
+                            .founderName(clubResponse.getFounderName())
+                            .founderStudentCode(clubResponse.getFounderStudentCode())
+                            .clubRole(register.getClubRole())
+                            .joinedAt(register.getJoinDate())
+                            .endDate(register.getEndDate())
+                            .packageName(register.getMembershipPackage().getPackageName())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 }

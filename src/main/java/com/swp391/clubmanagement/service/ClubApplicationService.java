@@ -163,7 +163,7 @@ public class ClubApplicationService {
             Memberships defaultPackage = Memberships.builder()
                     .club(newClub)
                     .packageName("Thành Viên Cơ Bản")
-                    .term("1 năm")
+                    .term("1 tháng")
                     .price(application.getDefaultMembershipFee())
                     .description("Gói thành viên mặc định được tạo tự động khi CLB được phê duyệt")
                     .isActive(true)
