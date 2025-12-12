@@ -345,14 +345,25 @@ public class PayOSController {
             
             // Cập nhật thông tin thanh toán
             log.info("Updating register to PAID status...");
+            LocalDateTime now = LocalDateTime.now();
             register.setIsPaid(true);
-            register.setPaymentDate(LocalDateTime.now());
+            register.setPaymentDate(now);
             register.setPaymentMethod("PayOS");
             register.setPayosReference(webhookData.getData().getReference());
+            
+            // Set thời gian bắt đầu và kết thúc membership dựa trên term của gói
+            LocalDateTime startDate = now;
+            register.setStartDate(startDate);
+            
+            // Tính endDate dựa trên term của package
+            String term = register.getMembershipPackage().getTerm();
+            LocalDateTime endDate = calculateEndDate(startDate, term);
+            register.setEndDate(endDate);
+            
             registerRepository.save(register);
             
-            log.info("✅ Payment processed successfully for subscriptionId: {}, orderCode: {}", 
-                    register.getSubscriptionId(), orderCode);
+            log.info("✅ Payment processed successfully for subscriptionId: {}, orderCode: {}, membership valid until: {}", 
+                    register.getSubscriptionId(), orderCode, endDate);
             
             return ApiResponse.<String>builder()
                     .result("Payment processed successfully")
@@ -458,6 +469,74 @@ public class PayOSController {
                 .result("Payment cancelled")
                 .message("Bạn đã hủy thanh toán. Bạn có thể thanh toán lại sau.")
                 .build();
+    }
+    
+    /**
+     * Helper method: Tính toán endDate dựa trên term của gói membership
+     * @param startDate Ngày bắt đầu
+     * @param term Kỳ hạn (VD: "1 tháng", "3 tháng", "6 tháng", "1 năm")
+     * @return Ngày hết hạn
+     */
+    private LocalDateTime calculateEndDate(LocalDateTime startDate, String term) {
+        if (term == null || term.isEmpty()) {
+            // Mặc định 1 năm nếu không có term
+            log.warn("Term is null or empty. Using default 1 year");
+            return startDate.plusYears(1);
+        }
+        
+        // Chuyển về lowercase và trim để dễ xử lý
+        String normalizedTerm = term.toLowerCase().trim();
+        
+        // Parse term và tính endDate
+        if (normalizedTerm.contains("tháng")) {
+            // Trích xuất số tháng (VD: "1 tháng", "3 tháng", "6 tháng")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int months = Integer.parseInt(parts[0]);
+                log.info("Calculated end date: {} months from {}", months, startDate);
+                return startDate.plusMonths(months);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 6 months", term);
+                return startDate.plusMonths(6);
+            }
+        } else if (normalizedTerm.contains("năm")) {
+            // Trích xuất số năm (VD: "1 năm", "2 năm")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int years = Integer.parseInt(parts[0]);
+                log.info("Calculated end date: {} years from {}", years, startDate);
+                return startDate.plusYears(years);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 1 year", term);
+                return startDate.plusYears(1);
+            }
+        } else if (normalizedTerm.contains("month")) {
+            // Support English format (VD: "1 month", "6 months")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int months = Integer.parseInt(parts[0]);
+                log.info("Calculated end date: {} months from {}", months, startDate);
+                return startDate.plusMonths(months);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 6 months", term);
+                return startDate.plusMonths(6);
+            }
+        } else if (normalizedTerm.contains("year")) {
+            // Support English format (VD: "1 year", "2 years")
+            try {
+                String[] parts = normalizedTerm.split("\\s+");
+                int years = Integer.parseInt(parts[0]);
+                log.info("Calculated end date: {} years from {}", years, startDate);
+                return startDate.plusYears(years);
+            } catch (Exception e) {
+                log.warn("Cannot parse term: {}. Using default 1 year", term);
+                return startDate.plusYears(1);
+            }
+        } else {
+            // Format không nhận diện được, mặc định 1 năm
+            log.warn("Unknown term format: {}. Using default 1 year", term);
+            return startDate.plusYears(1);
+        }
     }
 }
 
