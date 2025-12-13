@@ -17,32 +17,32 @@ public interface UserMapper {
     @Mapping(target = "role", expression = "java(user.getRole() != null ? user.getRole().getRoleName() : null)")
     @Mapping(target = "isActive", source = "isActive")
     @Mapping(target = "major", source = "major")
-    @Mapping(target = "clubIds", ignore = true)
+    @Mapping(target = "clubIds", expression = "java(extractClubIds(user))")
     UserResponse toUserResponse(Users user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateUser(@MappingTarget Users user, UserUpdateRequest request);
 
     /**
-     * AfterMapping: Thêm logic custom để map clubIds
+     * Extract clubIds từ user's registers
      * Lấy danh sách ID các CLB mà user đang là thành viên chính thức (DaDuyet + isPaid)
      */
-    @AfterMapping
-    default void mapClubIds(@MappingTarget UserResponse response, Users user) {
-        if (user.getRegisters() != null && !user.getRegisters().isEmpty()) {
-            List<Integer> clubIds = user.getRegisters().stream()
-                    .filter(r -> r != null && 
-                            r.getStatus() == JoinStatus.DaDuyet && 
-                            r.getIsPaid() != null && r.getIsPaid() &&
-                            r.getMembershipPackage() != null &&
-                            r.getMembershipPackage().getClub() != null)
-                    .map(r -> r.getMembershipPackage().getClub().getClubId())
-                    .distinct()
-                    .collect(Collectors.toList());
-            response.setClubIds(clubIds.isEmpty() ? null : clubIds);
-        } else {
-            response.setClubIds(null);
+    default List<Integer> extractClubIds(Users user) {
+        if (user == null || user.getRegisters() == null || user.getRegisters().isEmpty()) {
+            return null;
         }
+        
+        List<Integer> clubIds = user.getRegisters().stream()
+                .filter(r -> r != null && 
+                        r.getStatus() == JoinStatus.DaDuyet && 
+                        r.getIsPaid() != null && r.getIsPaid() &&
+                        r.getMembershipPackage() != null &&
+                        r.getMembershipPackage().getClub() != null)
+                .map(r -> r.getMembershipPackage().getClub().getClubId())
+                .distinct()
+                .collect(Collectors.toList());
+        
+        return clubIds.isEmpty() ? null : clubIds;
     }
 }
 

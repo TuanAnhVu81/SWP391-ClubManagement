@@ -20,13 +20,14 @@ public interface UserRepository extends JpaRepository<Users, String> {
     
     /**
      * Lấy danh sách users với eager load registers và các relationship cần thiết để populate clubIds
-     * Sử dụng EntityGraph với nested paths để load registers, membershipPackage và club
+     * Sử dụng EntityGraph để eager load role, registers và nested relationships
      */
     @EntityGraph(attributePaths = {
-        "registers",
+        "role",
+        "registers", 
         "registers.membershipPackage", 
         "registers.membershipPackage.club"
-    })
+    }, type = EntityGraph.EntityGraphType.LOAD)
     @Query("SELECT DISTINCT u FROM Users u")
     Page<Users> findAllWithRegisters(Pageable pageable);
 }
