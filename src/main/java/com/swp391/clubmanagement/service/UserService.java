@@ -167,7 +167,8 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable)
+        // Sử dụng findAllWithRegisters để eager load registers và populate clubIds
+        return userRepository.findAllWithRegisters(pageable)
                 .map(userMapper::toUserResponse);
     }
 
