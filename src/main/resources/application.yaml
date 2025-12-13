@@ -4,10 +4,11 @@ server:
     context-path: /api
 
 spring:
+  config:
+    import: optional:classpath:application-secret.yaml
+
   datasource:
     url: "jdbc:mysql://swp391-server.mysql.database.azure.com:3306/club_management?ssl-mode=REQUIRED"
-    username: anhvt
-    password: Club1234@
 
 #      url: "jdbc:mysql://localhost:3306/club_management"
 #      username: root
@@ -34,17 +35,11 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
 
-jwt:
-  signerKey: "066f37bf2e51e827ed91c4ad68a3fcfd684c11f52e8ae1f22801bed7c788e1e3"
-
 app:
   base-url: "https://clubmanage.azurewebsites.net/api"
 #  base-url: "http://localhost:8081/api"
 
 payos:
-  client-id: "5301efbb-b43e-43f5-96fe-2833b57cedfb"
-  api-key: "caec2c2d-3871-4763-8ff4-640947354555"
-  checksum-key: "612d045d9a61205789f3b47e1b996374829793ea0569bc34b8f86314ba35c13b"
   api-url: "https://api-merchant.payos.vn"
 
 springdoc:
