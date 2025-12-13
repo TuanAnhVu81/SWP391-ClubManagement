@@ -238,17 +238,19 @@ public class LeaderRegisterService {
      * VD: Từ ThanhVien lên PhoChuTich, hoặc từ PhoChuTich xuống ThanhVien
      */
     @Transactional
-    public RegisterResponse changeRole(Integer subscriptionId, ChangeRoleRequest request) {
+    public RegisterResponse changeRole(Integer clubId, String userId, ChangeRoleRequest request) {
         Users currentUser = getCurrentUser();
-        
-        // Lấy đơn đăng ký
-        Registers register = registerRepository.findById(subscriptionId)
-                .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
-        
-        Integer clubId = register.getMembershipPackage().getClub().getClubId();
         
         // Kiểm tra quyền Leader
         validateLeaderRole(currentUser, clubId);
+        
+        // Lấy user cần thay đổi role
+        Users userToChange = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Lấy đơn đăng ký của user trong club
+        Registers register = registerRepository.findByUserAndMembershipPackage_Club_ClubId(userToChange, clubId)
+                .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
         
         // Kiểm tra thành viên phải đã được duyệt và đã đóng phí
         if (register.getStatus() != JoinStatus.DaDuyet || !register.getIsPaid()) {
@@ -262,8 +264,8 @@ public class LeaderRegisterService {
         register.setClubRole(request.getNewRole());
 
         registerRepository.save(register);
-        log.info("Member role changed: subscriptionId={}, user={}, oldRole={}, newRole={}, by={}", 
-                subscriptionId, register.getUser().getEmail(), oldRole, request.getNewRole(), currentUser.getEmail());
+        log.info("Member role changed: userId={}, user={}, clubId={}, oldRole={}, newRole={}, by={}", 
+                userId, userToChange.getEmail(), clubId, oldRole, request.getNewRole(), currentUser.getEmail());
 
         return registerMapper.toRegisterResponse(register);
     }

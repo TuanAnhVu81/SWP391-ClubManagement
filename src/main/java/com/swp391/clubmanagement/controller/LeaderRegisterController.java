@@ -91,17 +91,18 @@ public class LeaderRegisterController {
     }
     
     /**
-     * PUT /api/registrations/{regId}/role
+     * PUT /api/registrations/club/{clubId}/user/{userId}/role
      * Thăng chức/Hạ chức thành viên (VD: Từ ThanhVien lên PhoChuTich)
      */
-    @PutMapping("/{regId}/role")
+    @PutMapping("/club/{clubId}/user/{userId}/role")
     @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Thăng/hạ chức thành viên", description = "Thăng chức/Hạ chức thành viên (VD: Từ ThanhVien lên PhoChuTich)")
     public ApiResponse<RegisterResponse> changeRole(
-            @PathVariable Integer regId,
+            @PathVariable Integer clubId,
+            @PathVariable String userId,
             @Valid @RequestBody ChangeRoleRequest request) {
         
-        RegisterResponse response = leaderRegisterService.changeRole(regId, request);
+        RegisterResponse response = leaderRegisterService.changeRole(clubId, userId, request);
         
         return ApiResponse.<RegisterResponse>builder()
                 .result(response)
