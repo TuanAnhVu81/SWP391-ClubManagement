@@ -29,13 +29,19 @@ public interface UserMapper {
      */
     @AfterMapping
     default void mapClubIds(@MappingTarget UserResponse response, Users user) {
-        if (user.getRegisters() != null) {
+        if (user.getRegisters() != null && !user.getRegisters().isEmpty()) {
             List<Integer> clubIds = user.getRegisters().stream()
-                    .filter(r -> r.getStatus() == JoinStatus.DaDuyet && r.getIsPaid())
+                    .filter(r -> r != null && 
+                            r.getStatus() == JoinStatus.DaDuyet && 
+                            r.getIsPaid() != null && r.getIsPaid() &&
+                            r.getMembershipPackage() != null &&
+                            r.getMembershipPackage().getClub() != null)
                     .map(r -> r.getMembershipPackage().getClub().getClubId())
                     .distinct()
                     .collect(Collectors.toList());
-            response.setClubIds(clubIds);
+            response.setClubIds(clubIds.isEmpty() ? null : clubIds);
+        } else {
+            response.setClubIds(null);
         }
     }
 }
