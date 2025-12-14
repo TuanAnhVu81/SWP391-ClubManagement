@@ -12,7 +12,9 @@ import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.mapper.RegisterMapper;
 import com.swp391.clubmanagement.repository.RegisterRepository;
+import com.swp391.clubmanagement.repository.RoleRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
+import com.swp391.clubmanagement.enums.RoleType;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -32,6 +34,7 @@ public class LeaderRegisterService {
     RegisterRepository registerRepository;
     UserRepository userRepository;
     RegisterMapper registerMapper;
+    RoleRepository roleRepository;
 
     // Các vai trò được phép duyệt đơn
     private static final List<ClubRoleType> LEADER_ROLES = List.of(
@@ -258,14 +261,43 @@ public class LeaderRegisterService {
         }
         
         // Lưu role cũ để log
-        ClubRoleType oldRole = register.getClubRole();
+        ClubRoleType oldClubRole = register.getClubRole();
+        RoleType currentUserRole = userToChange.getRole().getRoleName();
         
         // Cập nhật role mới
         register.setClubRole(request.getNewRole());
-
         registerRepository.save(register);
-        log.info("Member role changed: userId={}, user={}, clubId={}, oldRole={}, newRole={}, by={}", 
-                userId, userToChange.getEmail(), clubId, oldRole, request.getNewRole(), currentUser.getEmail());
+        
+        // Logic 1: Nếu ClubRole cũ = ChuTich và Role = ChuTich, khi đổi sang ClubRole khác thì Role -> SinhVien
+        if (oldClubRole == ClubRoleType.ChuTich 
+                && currentUserRole == RoleType.ChuTich 
+                && request.getNewRole() != ClubRoleType.ChuTich) {
+            var sinhVienRole = roleRepository.findByRoleName(RoleType.SinhVien)
+                    .orElseThrow(() -> {
+                        log.error("SinhVien role not found in database. Please check ApplicationInitConfig.");
+                        return new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                    });
+            userToChange.setRole(sinhVienRole);
+            userRepository.save(userToChange);
+            log.info("User {} role changed from ChuTich to SinhVien because ClubRole changed from ChuTich to {}", 
+                    userToChange.getEmail(), request.getNewRole());
+        }
+        
+        // Logic 2: Nếu ClubRole cũ != ChuTich và ClubRole mới = ChuTich thì Role -> ChuTich
+        if (oldClubRole != ClubRoleType.ChuTich && request.getNewRole() == ClubRoleType.ChuTich) {
+            var chuTichRole = roleRepository.findByRoleName(RoleType.ChuTich)
+                    .orElseThrow(() -> {
+                        log.error("ChuTich role not found in database. Please check ApplicationInitConfig.");
+                        return new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                    });
+            userToChange.setRole(chuTichRole);
+            userRepository.save(userToChange);
+            log.info("User {} role changed to ChuTich because ClubRole changed from {} to ChuTich", 
+                    userToChange.getEmail(), oldClubRole);
+        }
+
+        log.info("Member role changed: userId={}, user={}, clubId={}, oldClubRole={}, newClubRole={}, by={}", 
+                userId, userToChange.getEmail(), clubId, oldClubRole, request.getNewRole(), currentUser.getEmail());
 
         return registerMapper.toRegisterResponse(register);
     }
