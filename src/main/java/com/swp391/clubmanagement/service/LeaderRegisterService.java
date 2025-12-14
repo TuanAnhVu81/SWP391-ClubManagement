@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -294,6 +295,34 @@ public class LeaderRegisterService {
             userRepository.save(userToChange);
             log.info("User {} role changed to ChuTich because ClubRole changed from {} to ChuTich", 
                     userToChange.getEmail(), oldClubRole);
+            
+            // Logic 3: Khi ChuTich đổi role người khác thành ChuTich, thì ChuTich hiện tại sẽ bị tự động đổi
+            // ClubRole thành ThanhVien và Role thành SinhVien
+            Optional<Registers> currentUserRegister = registerRepository.findByUserAndMembershipPackage_Club_ClubId(currentUser, clubId);
+            if (currentUserRegister.isPresent()) {
+                Registers currentUserReg = currentUserRegister.get();
+                // Kiểm tra currentUser có phải là ChuTich không
+                if (currentUserReg.getClubRole() == ClubRoleType.ChuTich 
+                        && currentUserReg.getStatus() == JoinStatus.DaDuyet 
+                        && currentUserReg.getIsPaid()) {
+                    // Hạ currentUser xuống ThanhVien
+                    currentUserReg.setClubRole(ClubRoleType.ThanhVien);
+                    registerRepository.save(currentUserReg);
+                    
+                    // Đổi Role của currentUser thành SinhVien
+                    var sinhVienRole = roleRepository.findByRoleName(RoleType.SinhVien)
+                            .orElseThrow(() -> {
+                                log.error("SinhVien role not found in database. Please check ApplicationInitConfig.");
+                                return new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                            });
+                    currentUser.setRole(sinhVienRole);
+                    userRepository.save(currentUser);
+                    
+                    log.info("Current ChuTich {} automatically demoted to ThanhVien (ClubRole) and SinhVien (Role) " +
+                            "because they promoted {} to ChuTich", 
+                            currentUser.getEmail(), userToChange.getEmail());
+                }
+            }
         }
 
         log.info("Member role changed: userId={}, user={}, clubId={}, oldClubRole={}, newClubRole={}, by={}", 
