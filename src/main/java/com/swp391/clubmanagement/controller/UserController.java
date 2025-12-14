@@ -134,87 +134,97 @@ public class UserController {
      */
     private String buildSuccessHtmlPage() {
         return """
-            <!DOCTYPE html>
-            <html lang="vi">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Xác Thực Email Thành Công - ClubHub</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-                        min-height: 100vh;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 20px;
-                    }
-                    .container {
-                        background: white;
-                        border-radius: 20px;
-                        padding: 60px 40px;
-                        text-align: center;
-                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                        max-width: 500px;
-                        width: 100%%;
-                    }
-                    .icon {
-                        width: 100px;
-                        height: 100px;
-                        background: linear-gradient(135deg, #11998e 0%%, #38ef7d 100%%);
-                        border-radius: 50%%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin: 0 auto 30px;
-                        font-size: 50px;
-                    }
-                    h1 {
-                        color: #333;
-                        font-size: 28px;
-                        margin-bottom: 15px;
-                    }
-                    p {
-                        color: #666;
-                        font-size: 16px;
-                        line-height: 1.6;
-                        margin-bottom: 30px;
-                    }
-                    .btn {
-                        display: inline-block;
-                        padding: 15px 40px;
-                        background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-                        color: white;
-                        text-decoration: none;
-                        border-radius: 50px;
-                        font-weight: 600;
-                        font-size: 16px;
-                        transition: transform 0.3s, box-shadow 0.3s;
-                    }
-                    .btn:hover {
-                        transform: translateY(-3px);
-                        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-                    }
-                    .logo {
-                        margin-top: 40px;
-                        color: #999;
-                        font-size: 14px;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="icon">✓</div>
-                    <h1>Xác Thực Email Thành Công!</h1>
-                    <p>Chúc mừng! Email của bạn đã được xác thực thành công.<br>Bây giờ bạn có thể đăng nhập và sử dụng đầy đủ các tính năng của ClubHub.</p>
-                    <a href="http://localhost:3000/login" class="btn">Đăng Nhập Ngay</a>
-                    <p class="logo">🎓 ClubHub - FPT University</p>
-                </div>
-            </body>
-            </html>
-            """;
+        <!DOCTYPE html>
+        <html lang="vi">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Xác Thực Email Thành Công - ClubHub</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+                .container {
+                    background: #ffffff;
+                    border-radius: 20px;
+                    padding: 60px 40px;
+                    text-align: center;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    max-width: 500px;
+                    width: 100%%;
+                }
+                .icon {
+                    width: 100px;
+                    height: 100px;
+                    background: linear-gradient(135deg, #11998e 0%%, #38ef7d 100%%);
+                    border-radius: 50%%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 30px;
+                    font-size: 50px;
+                    color: white; /* Đảm bảo dấu tick màu trắng */
+                }
+                h1 {
+                    color: #333333;
+                    font-size: 28px;
+                    margin-bottom: 15px;
+                    font-weight: 700;
+                }
+                p {
+                    color: #666666;
+                    font-size: 16px;
+                    line-height: 1.6;
+                    margin-bottom: 30px;
+                }
+                .btn {
+                    display: inline-block;
+                    padding: 16px 45px;
+                    /* FIX: Màu nền dự phòng (Solid color) cho trình duyệt không hỗ trợ gradient */
+                    background-color: #667eea; 
+                    /* Gradient chủ đạo */
+                    background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+                    color: #ffffff !important; /* Bắt buộc chữ màu trắng */
+                    text-decoration: none;
+                    border-radius: 50px;
+                    font-weight: 700; /* Tăng độ đậm chữ */
+                    font-size: 16px;
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); /* Bóng đổ nhẹ để nút nổi lên */
+                    transition: all 0.3s ease;
+                    border: 1px solid transparent; /* Giữ layout ổn định */
+                }
+                .btn:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.6);
+                    /* Khi hover đổi màu nhẹ để tạo hiệu ứng */
+                    background: linear-gradient(135deg, #5a6fd6 0%%, #6c4596 100%%);
+                }
+                .logo {
+                    margin-top: 40px;
+                    color: #999999;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="icon">✓</div>
+                <h1>Xác Thực Email Thành Công!</h1>
+                <p>Chúc mừng! Email của bạn đã được xác thực thành công.<br>Bây giờ bạn có thể đăng nhập và sử dụng đầy đủ các tính năng của ClubHub.</p>
+                <a href="https://club-management-system-ochre.vercel.app/" class="btn">Đăng Nhập Ngay</a>
+                <p class="logo">🎓 ClubHub - FPT University</p>
+            </div>
+        </body>
+        </html>
+        """;
     }
 
     /**
@@ -308,7 +318,7 @@ public class UserController {
                     <h1>Lỗi Xác Thực Email</h1>
                     <div class="error-box">%s</div>
                     <p>Link xác thực không hợp lệ hoặc đã hết hạn.<br>Vui lòng thử đăng ký lại hoặc liên hệ hỗ trợ.</p>
-                    <a href="http://localhost:3000" class="btn">Quay Về Trang Chủ</a>
+                    <a href="https://club-management-system-ochre.vercel.app" class="btn">Quay Về Trang Chủ</a>
                     <p class="logo">🎓 ClubHub - FPT University</p>
                 </div>
             </body>
