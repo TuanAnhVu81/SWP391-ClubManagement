@@ -8,9 +8,9 @@ spring:
     import: optional:classpath:application-secret.yaml
 
   datasource:
-    url: "jdbc:mysql://swp391-server.mysql.database.azure.com:3306/club_management?ssl-mode=REQUIRED"
+    url: "jdbc:mysql://swp391-server.mysql.database.azure.com:3306/club_management?serverTimezone=Asia/Ho_Chi_Minh&ssl-mode=REQUIRED"
 
-  #      url: "jdbc:mysql://localhost:3306/club_management"
+  #      url: "jdbc:mysql://localhost:3306/club_management?serverTimezone=Asia/Ho_Chi_Minh"
   #      username: root
   #      password: root
 
@@ -34,6 +34,8 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: Asia/Ho_Chi_Minh
 
 app:
   base-url: "https://clubmanage.azurewebsites.net/api"

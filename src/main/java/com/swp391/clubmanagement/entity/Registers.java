@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
+@EntityListeners(com.swp391.clubmanagement.configuration.EntityAuditListener.class)
 @Table(name = "Registers", 
        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "package_id"}))
 public class Registers {
@@ -79,7 +80,6 @@ public class Registers {
     LocalDateTime joinDate;
     
     @Column(name = "created_at")
-    @Builder.Default
-    LocalDateTime createdAt = LocalDateTime.now();
+    LocalDateTime createdAt;
 }
 

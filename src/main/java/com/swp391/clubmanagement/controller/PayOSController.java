@@ -16,6 +16,7 @@ import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
 import com.swp391.clubmanagement.service.PayOSService;
+import com.swp391.clubmanagement.utils.DateTimeUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -345,7 +346,7 @@ public class PayOSController {
             
             // Cập nhật thông tin thanh toán
             log.info("Updating register to PAID status...");
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = DateTimeUtils.nowVietnam();
             register.setIsPaid(true);
             register.setPaymentDate(now);
             register.setPaymentMethod("PayOS");

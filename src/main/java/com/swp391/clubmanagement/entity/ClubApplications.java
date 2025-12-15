@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
+@EntityListeners(com.swp391.clubmanagement.configuration.EntityAuditListener.class)
 @Table(name = "ClubApplications")
 public class ClubApplications {
     
@@ -69,8 +70,7 @@ public class ClubApplications {
     Users reviewer;
     
     @Column(name = "created_at")
-    @Builder.Default
-    LocalDateTime createdAt = LocalDateTime.now();
+    LocalDateTime createdAt;
     
     @Column(name = "updated_at")
     LocalDateTime updatedAt;

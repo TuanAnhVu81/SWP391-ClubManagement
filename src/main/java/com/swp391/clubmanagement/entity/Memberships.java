@@ -16,6 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
+@EntityListeners(com.swp391.clubmanagement.configuration.EntityAuditListener.class)
 @Table(name = "Memberships")
 public class Memberships {
     
@@ -46,8 +47,7 @@ public class Memberships {
     Boolean isActive = true;
     
     @Column(name = "created_at")
-    @Builder.Default
-    LocalDateTime createdAt = LocalDateTime.now();
+    LocalDateTime createdAt;
     
     // Relationships - Ignore để tránh circular reference khi serialize JSON
     @JsonIgnore

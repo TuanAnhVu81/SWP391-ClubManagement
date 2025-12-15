@@ -15,6 +15,7 @@ import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.RoleRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
 import com.swp391.clubmanagement.enums.RoleType;
+import com.swp391.clubmanagement.utils.DateTimeUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -118,7 +119,7 @@ public class LeaderRegisterService {
 
         // Nếu duyệt, set joinDate
         if (request.getStatus() == JoinStatus.DaDuyet) {
-            register.setJoinDate(LocalDateTime.now());
+            register.setJoinDate(DateTimeUtils.nowVietnam());
             log.info("Registration {} approved by Leader {}", request.getSubscriptionId(), currentUser.getEmail());
         } else {
             log.info("Registration {} rejected by Leader {}", request.getSubscriptionId(), currentUser.getEmail());
@@ -155,11 +156,11 @@ public class LeaderRegisterService {
 
         // Xác nhận thanh toán
         register.setIsPaid(true);
-        register.setPaymentDate(LocalDateTime.now());
+        register.setPaymentDate(DateTimeUtils.nowVietnam());
         register.setPaymentMethod(request.getPaymentMethod());
         
         // Set thời gian bắt đầu và kết thúc membership dựa trên term của gói
-        LocalDateTime startDate = LocalDateTime.now();
+        LocalDateTime startDate = DateTimeUtils.nowVietnam();
         register.setStartDate(startDate);
         
         // Tính endDate dựa trên term của package

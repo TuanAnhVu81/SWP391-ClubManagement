@@ -10,6 +10,7 @@ import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.mapper.UserMapper;
 import com.swp391.clubmanagement.repository.RoleRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
+import com.swp391.clubmanagement.utils.DateTimeUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -59,7 +60,7 @@ public class UserService {
         // Tạo mã xác nhận và thời hạn
         String verificationToken = UUID.randomUUID().toString();
         user.setVerificationCode(verificationToken);
-        user.setVerificationExpiry(LocalDateTime.now().plusHours(VERIFICATION_EXPIRY_HOURS));
+        user.setVerificationExpiry(DateTimeUtils.nowVietnam().plusHours(VERIFICATION_EXPIRY_HOURS));
         user.setEnabled(false);
 
         userRepository.save(user);
@@ -85,7 +86,7 @@ public class UserService {
 
         // Kiểm tra link còn hạn không
         if (user.getVerificationExpiry() == null || 
-            LocalDateTime.now().isAfter(user.getVerificationExpiry())) {
+            DateTimeUtils.nowVietnam().isAfter(user.getVerificationExpiry())) {
             throw new AppException(ErrorCode.VERIFICATION_LINK_EXPIRED);
         }
 
@@ -108,7 +109,7 @@ public class UserService {
 
         // Kiểm tra link còn hạn không
         if (user.getVerificationExpiry() == null ||
-            LocalDateTime.now().isAfter(user.getVerificationExpiry())) {
+            DateTimeUtils.nowVietnam().isAfter(user.getVerificationExpiry())) {
             throw new AppException(ErrorCode.VERIFICATION_LINK_EXPIRED);
         }
 

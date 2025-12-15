@@ -21,6 +21,7 @@ import com.swp391.clubmanagement.repository.MembershipRepository;
 import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.RoleRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
+import com.swp391.clubmanagement.utils.DateTimeUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -69,7 +70,7 @@ public class ClubApplicationService {
                 .email(request.getEmail())
                 .defaultMembershipFee(request.getDefaultMembershipFee())
                 .status(RequestStatus.DangCho)
-                .createdAt(LocalDateTime.now())
+                .createdAt(DateTimeUtils.nowVietnam())
                 .build();
         
         application = clubApplicationRepository.save(application);
@@ -139,7 +140,7 @@ public class ClubApplicationService {
         application.setStatus(request.getStatus());
         application.setAdminNote(request.getAdminNote());
         application.setReviewer(reviewer);
-        application.setUpdatedAt(LocalDateTime.now());
+        application.setUpdatedAt(DateTimeUtils.nowVietnam());
         
         // Nếu duyệt, tự động tạo CLB mới và gói membership mặc định
         if (request.getStatus() == RequestStatus.ChapThuan) {
@@ -174,7 +175,7 @@ public class ClubApplicationService {
                     newClub.getClubId(), application.getDefaultMembershipFee());
             
             // 3. Tự động thêm founder vào CLB với role ChuTich
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = DateTimeUtils.nowVietnam();
             Registers founderRegistration = Registers.builder()
                     .user(application.getCreator())
                     .membershipPackage(defaultPackage)

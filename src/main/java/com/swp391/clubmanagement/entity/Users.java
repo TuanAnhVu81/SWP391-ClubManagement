@@ -15,6 +15,7 @@ import java.util.Set;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
+@EntityListeners(com.swp391.clubmanagement.configuration.EntityAuditListener.class)
 @Table(name = "Users")
 public class Users {
     
@@ -62,8 +63,7 @@ public class Users {
     Boolean isActive = true;
     
     @Column(name = "created_at")
-    @Builder.Default
-    LocalDateTime createdAt = LocalDateTime.now();
+    LocalDateTime createdAt;
     
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
