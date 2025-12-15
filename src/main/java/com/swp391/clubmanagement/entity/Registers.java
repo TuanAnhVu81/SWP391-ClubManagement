@@ -39,6 +39,9 @@ public class Registers {
     @Builder.Default
     JoinStatus status = JoinStatus.ChoDuyet;
     
+    @Column(name = "join_reason", columnDefinition = "TEXT")
+    String joinReason; // Lý do gia nhập CLB
+    
     @ManyToOne
     @JoinColumn(name = "approver_id")
     Users approver;

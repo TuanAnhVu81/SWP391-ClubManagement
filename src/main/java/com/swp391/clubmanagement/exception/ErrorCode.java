@@ -28,6 +28,7 @@ public enum ErrorCode {
     INVALID_EMAIL(2005, "Invalid email format", HttpStatus.BAD_REQUEST),
     EMAIL_NOT_EXIST(2006, "Email does not exist", HttpStatus.NOT_FOUND),
     CANNOT_DELETE_FOUNDER(2007, "Cannot delete user who is founder of clubs. Please transfer ownership first.", HttpStatus.BAD_REQUEST),
+    USER_DEACTIVATED(2008, "Your account has been deactivated by administrator. Please contact support for assistance.", HttpStatus.FORBIDDEN),
     
     // --- Authentication & Authorization Errors (Lỗi xác thực & phân quyền - 3xxx) ---
     UNAUTHENTICATED(3001, "Unauthenticated", HttpStatus.UNAUTHORIZED), // Chưa đăng nhập hoặc token không hợp lệ
@@ -50,6 +51,8 @@ public enum ErrorCode {
     PACKAGE_NOT_ACTIVE(5005, "Package is not active", HttpStatus.BAD_REQUEST),
     ALREADY_REGISTERED(5006, "Already registered for this package", HttpStatus.BAD_REQUEST),
     REGISTER_NOT_FOUND(5007, "Registration not found", HttpStatus.NOT_FOUND),
+    PRESIDENT_CANNOT_LEAVE(5008, "Club President cannot leave the club. Please transfer leadership first.", HttpStatus.FORBIDDEN),
+    NOT_ACTIVE_MEMBER(5009, "You are not an active member of this club", HttpStatus.BAD_REQUEST),
     
     // --- Application Related Errors (Lỗi đơn đăng ký - 6xxx) ---
     APPLICATION_NOT_FOUND(6001, "Application not found", HttpStatus.NOT_FOUND),

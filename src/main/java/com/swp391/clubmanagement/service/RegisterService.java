@@ -6,6 +6,7 @@ import com.swp391.clubmanagement.entity.Memberships;
 import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.JoinStatus;
+import com.swp391.clubmanagement.enums.RoleType;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.mapper.RegisterMapper;
@@ -74,12 +75,14 @@ public class RegisterService {
                 .user(currentUser)
                 .membershipPackage(membershipPackage)
                 .status(JoinStatus.ChoDuyet)
+                .joinReason(request.getJoinReason())
                 .isPaid(false)
                 .build();
         
         registerRepository.save(register);
-        log.info("User {} registered for package {} (Club: {})", 
-                currentUser.getEmail(), membershipPackage.getPackageName(), membershipPackage.getClub().getClubName());
+        log.info("User {} registered for package {} (Club: {}) with reason: {}", 
+                currentUser.getEmail(), membershipPackage.getPackageName(), 
+                membershipPackage.getClub().getClubName(), request.getJoinReason());
         
         return registerMapper.toRegisterResponse(register);
     }
@@ -131,6 +134,35 @@ public class RegisterService {
         
         registerRepository.delete(register);
         log.info("User {} canceled registration {}", currentUser.getEmail(), subscriptionId);
+    }
+
+    /**
+     * Rời khỏi CLB (chỉ dành cho sinh viên, không dành cho ChuTich)
+     * @param clubId ID của CLB muốn rời
+     */
+    public void leaveClub(Integer clubId) {
+        Users currentUser = getCurrentUser();
+        
+        // Kiểm tra user có phải là ChuTich không
+        if (currentUser.getRole().getRoleName() == RoleType.ChuTich) {
+            throw new AppException(ErrorCode.PRESIDENT_CANNOT_LEAVE);
+        }
+        
+        // Tìm registration của user trong CLB này
+        Registers register = registerRepository.findByUserAndMembershipPackage_Club_ClubId(currentUser, clubId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_CLUB_MEMBER));
+        
+        // Kiểm tra phải là thành viên đang active (DaDuyet và đã thanh toán)
+        if (register.getStatus() != JoinStatus.DaDuyet || !register.getIsPaid()) {
+            throw new AppException(ErrorCode.NOT_ACTIVE_MEMBER);
+        }
+        
+        // Set status thành DaRoiCLB (đã rời CLB)
+        register.setStatus(JoinStatus.DaRoiCLB);
+        registerRepository.save(register);
+        
+        log.info("User {} left club {} (subscriptionId: {})", 
+                currentUser.getEmail(), clubId, register.getSubscriptionId());
     }
 }
 

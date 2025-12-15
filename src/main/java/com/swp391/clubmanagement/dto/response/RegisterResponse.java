@@ -35,6 +35,7 @@ public class RegisterResponse {
     
     // Trạng thái
     JoinStatus status;
+    String joinReason; // Lý do gia nhập CLB
     Boolean isPaid;
     String paymentMethod;
     ClubRoleType clubRole;

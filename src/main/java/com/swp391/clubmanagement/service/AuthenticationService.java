@@ -76,27 +76,34 @@ public class AuthenticationService {
     /**
      * authenticate: Xử lý đăng nhập.
      * 1. Kiểm tra user tồn tại (theo email).
-     * 2. Khớp mật khẩu (dùng BCrypt).
-     * 3. Nếu đúng -> Tạo token.
+     * 2. Kiểm tra tài khoản có bị vô hiệu hóa không (isActive).
+     * 3. Kiểm tra tài khoản đã xác thực email chưa (enabled).
+     * 4. Khớp mật khẩu (dùng BCrypt).
+     * 5. Nếu đúng -> Tạo token.
      */
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         // 1. Kiểm tra Email có tồn tại không
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_EXIST));
 
-        // 2. Kiểm tra tài khoản đã xác thực (enable) chưa
+        // 2. Kiểm tra tài khoản có bị vô hiệu hóa bởi Admin không (isActive = false)
+        if (user.getIsActive() == null || !user.getIsActive()) {
+            throw new AppException(ErrorCode.USER_DEACTIVATED);
+        }
+
+        // 3. Kiểm tra tài khoản đã xác thực (enable) chưa
         // Lưu ý: Trường 'enabled' trong Entity Users mặc định là false khi mới tạo
         if (!user.isEnabled()) {
             throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        // 3. Kiểm tra mật khẩu
+        // 4. Kiểm tra mật khẩu
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!authenticated) {
             throw new AppException(ErrorCode.WRONG_PASSWORD);
         }
 
-        // // 4. Nếu tất cả OK -> Tạo Token JWT
+        // 5. Nếu tất cả OK -> Tạo Token JWT
         var token = generateToken(user);
 
         return AuthenticationResponse.builder()

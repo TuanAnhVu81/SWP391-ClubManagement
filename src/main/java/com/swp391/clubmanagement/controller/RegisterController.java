@@ -32,13 +32,13 @@ public class RegisterController {
      * POST /api/registers
      * Đăng ký tham gia CLB (chọn gói membership)
      * 
-     * @param request { "packageId": 1 }
+     * @param request { "packageId": 1, "joinReason": "Lý do muốn gia nhập CLB" }
      * @return Thông tin đăng ký. Trạng thái mặc định: ChoDuyet (chờ Leader duyệt)
      */
     @PostMapping
     @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Đăng ký tham gia CLB", 
-               description = "Sinh viên đăng ký tham gia CLB bằng cách chọn 1 gói membership. Trạng thái ban đầu: ChoDuyet")
+               description = "Sinh viên đăng ký tham gia CLB bằng cách chọn 1 gói membership và điền lý do gia nhập. Lý do gia nhập phải từ 20-500 ký tự. Trạng thái ban đầu: ChoDuyet")
     public ApiResponse<RegisterResponse> joinClub(@Valid @RequestBody JoinClubRequest request) {
         return ApiResponse.<RegisterResponse>builder()
                 .result(registerService.joinClub(request))
@@ -92,6 +92,24 @@ public class RegisterController {
         registerService.cancelRegistration(subscriptionId);
         return ApiResponse.<String>builder()
                 .result("Hủy đăng ký thành công")
+                .build();
+    }
+
+    /**
+     * POST /api/registers/{clubId}/leave
+     * Rời khỏi CLB (chỉ dành cho sinh viên)
+     * 
+     * @param clubId ID của CLB muốn rời
+     * @return Thành công. Chỉ sinh viên (không phải ChuTich) mới được rời CLB
+     */
+    @PostMapping("/{clubId}/leave")
+    @PreAuthorize("hasAuthority('SCOPE_SinhVien')")
+    @Operation(summary = "Rời khỏi CLB", 
+               description = "Sinh viên rời khỏi CLB mà mình đang tham gia. Chỉ dành cho sinh viên (không dành cho ChuTich). User phải là thành viên đang active (DaDuyet + đã thanh toán) mới có thể rời.")
+    public ApiResponse<String> leaveClub(@PathVariable Integer clubId) {
+        registerService.leaveClub(clubId);
+        return ApiResponse.<String>builder()
+                .result("Rời CLB thành công")
                 .build();
     }
 }
