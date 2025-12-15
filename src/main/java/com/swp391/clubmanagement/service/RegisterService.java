@@ -5,6 +5,7 @@ import com.swp391.clubmanagement.dto.response.RegisterResponse;
 import com.swp391.clubmanagement.entity.Memberships;
 import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
+import com.swp391.clubmanagement.enums.ClubRoleType;
 import com.swp391.clubmanagement.enums.JoinStatus;
 import com.swp391.clubmanagement.enums.RoleType;
 import com.swp391.clubmanagement.exception.AppException;
@@ -45,6 +46,12 @@ public class RegisterService {
     /**
      * Đăng ký tham gia CLB (mua gói package)
      * Trạng thái mặc định: ChoDuyet
+     * 
+     * Logic tái gia nhập:
+     * - Nếu chưa có registration -> Tạo mới
+     * - Nếu status = ChoDuyet -> Không cho đăng ký lại (đang chờ duyệt)
+     * - Nếu status = DaDuyet + isPaid -> Không cho đăng ký lại (đã là thành viên)
+     * - Nếu status = TuChoi hoặc DaRoiCLB -> CHO PHÉP đăng ký lại (tạo mới)
      */
     public RegisterResponse joinClub(JoinClubRequest request) {
         Users currentUser = getCurrentUser();
@@ -58,16 +65,33 @@ public class RegisterService {
             throw new AppException(ErrorCode.PACKAGE_NOT_ACTIVE);
         }
         
-        // Kiểm tra user đã đăng ký gói này chưa
-        if (registerRepository.existsByUserAndMembershipPackage_PackageId(currentUser, request.getPackageId())) {
-            throw new AppException(ErrorCode.ALREADY_REGISTERED);
-        }
-        
-        // Kiểm tra user đã là thành viên CLB này chưa (đã duyệt + đã thanh toán)
+        // Lấy club ID
         Integer clubId = membershipPackage.getClub().getClubId();
-        if (registerRepository.existsByUserAndMembershipPackage_Club_ClubIdAndStatusAndIsPaid(
-                currentUser, clubId, JoinStatus.DaDuyet, true)) {
-            throw new AppException(ErrorCode.ALREADY_MEMBER);
+        
+        // Tìm registration cũ của user trong CLB này (nếu có)
+        var existingRegister = registerRepository.findByUserAndMembershipPackage_Club_ClubId(currentUser, clubId);
+        
+        if (existingRegister.isPresent()) {
+            Registers oldRegister = existingRegister.get();
+            JoinStatus oldStatus = oldRegister.getStatus();
+            
+            // Nếu đang chờ duyệt -> không cho đăng ký lại
+            if (oldStatus == JoinStatus.ChoDuyet) {
+                throw new AppException(ErrorCode.ALREADY_REGISTERED);
+            }
+            
+            // Nếu đã là thành viên (đã duyệt + đã thanh toán) -> không cho đăng ký lại
+            if (oldStatus == JoinStatus.DaDuyet && oldRegister.getIsPaid() != null && oldRegister.getIsPaid()) {
+                throw new AppException(ErrorCode.ALREADY_MEMBER);
+            }
+            
+            // Nếu status = TuChoi hoặc DaRoiCLB -> CHO PHÉP tái gia nhập
+            // Xóa registration cũ để tạo mới (giữ lại lịch sử trong database)
+            if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB) {
+                registerRepository.delete(oldRegister);
+                log.info("User {} re-applying to club {} after previous status: {}", 
+                        currentUser.getEmail(), clubId, oldStatus);
+            }
         }
         
         // Tạo đăng ký mới
@@ -98,6 +122,9 @@ public class RegisterService {
 
     /**
      * Xem chi tiết 1 đăng ký
+     * Cho phép:
+     * 1. User xem đăng ký của chính mình
+     * 2. Leader (ChuTich, PhoChuTich) của CLB xem đăng ký trong CLB của họ
      */
     public RegisterResponse getRegistrationById(Integer subscriptionId) {
         Users currentUser = getCurrentUser();
@@ -105,8 +132,18 @@ public class RegisterService {
         Registers register = registerRepository.findById(subscriptionId)
                 .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
         
-        // Kiểm tra đăng ký này có phải của user hiện tại không
-        if (!register.getUser().getUserId().equals(currentUser.getUserId())) {
+        // Kiểm tra quyền truy cập:
+        // 1. User có phải owner của đăng ký này không?
+        boolean isOwner = register.getUser().getUserId().equals(currentUser.getUserId());
+        
+        // 2. User có phải Leader của CLB này không?
+        Integer clubId = register.getMembershipPackage().getClub().getClubId();
+        List<ClubRoleType> leaderRoles = List.of(ClubRoleType.ChuTich, ClubRoleType.PhoChuTich);
+        boolean isLeader = registerRepository.existsByUserAndMembershipPackage_Club_ClubIdAndClubRoleInAndStatusAndIsPaid(
+                currentUser, clubId, leaderRoles, JoinStatus.DaDuyet, true);
+        
+        // Nếu không phải owner và không phải leader -> throw UNAUTHORIZED
+        if (!isOwner && !isLeader) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
         
