@@ -1,6 +1,7 @@
 package com.swp391.clubmanagement.controller;
 
 import com.swp391.clubmanagement.dto.request.JoinClubRequest;
+import com.swp391.clubmanagement.dto.request.RenewMembershipRequest;
 import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.dto.response.RegisterResponse;
 import com.swp391.clubmanagement.service.RegisterService;
@@ -110,6 +111,30 @@ public class RegisterController {
         registerService.leaveClub(clubId);
         return ApiResponse.<String>builder()
                 .result("Rời CLB thành công")
+                .build();
+    }
+
+    /**
+     * POST /api/registers/{subscriptionId}/renew
+     * Gia hạn membership (có thể giữ gói cũ hoặc đổi gói mới)
+     * 
+     * @param subscriptionId ID của đăng ký cần gia hạn
+     * @param request packageId (optional): null/empty = gia hạn gói hiện tại, có giá trị = đổi gói mới
+     * @return Thông tin đăng ký đã được cập nhật. Trạng thái: ChoDuyet (chờ thanh toán)
+     */
+    @PostMapping("/{subscriptionId}/renew")
+    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
+    @Operation(summary = "Gia hạn membership", 
+               description = "Gia hạn gói membership khi đã hết hạn (status = HetHan). " +
+                             "Có thể giữ nguyên gói hiện tại (không truyền packageId) hoặc " +
+                             "nâng cấp/hạ cấp gói (truyền packageId mới). " +
+                             "Sau khi gia hạn, trạng thái sẽ chuyển về ChoDuyet và cần thanh toán lại.")
+    public ApiResponse<RegisterResponse> renewMembership(
+            @PathVariable Integer subscriptionId,
+            @RequestBody(required = false) RenewMembershipRequest request) {
+        return ApiResponse.<RegisterResponse>builder()
+                .result(registerService.renewMembership(subscriptionId, request))
+                .message("Gia hạn thành công! Vui lòng thanh toán để kích hoạt lại membership.")
                 .build();
     }
 }

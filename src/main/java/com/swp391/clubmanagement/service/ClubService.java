@@ -45,6 +45,75 @@ public class ClubService {
     ClubMapper clubMapper;
     
     /**
+     * Helper: Kiểm tra và tự động cập nhật status nếu membership đã hết hạn
+     * (Lazy Evaluation - chỉ check khi cần)
+     * 
+     * @param register Register cần kiểm tra
+     * @return true nếu đã update status, false nếu chưa hết hạn
+     */
+    private boolean checkAndUpdateExpiry(Registers register) {
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Log để debug
+        log.debug("Checking expiry for subscription {}: status={}, isPaid={}, endDate={}, now={}", 
+                register.getSubscriptionId(),
+                register.getStatus(),
+                register.getIsPaid(),
+                register.getEndDate(),
+                now);
+        
+        // Chỉ check nếu: status = DaDuyet + đã thanh toán + có endDate
+        if (register.getStatus() == JoinStatus.DaDuyet 
+            && register.getIsPaid() != null && register.getIsPaid()
+            && register.getEndDate() != null
+            && register.getEndDate().isBefore(now)) {
+            
+            // Update status thành HetHan
+            register.setStatus(JoinStatus.HetHan);
+            registerRepository.save(register);
+            
+            log.info("✅ Auto-updated subscription {} to HetHan. User: {}, Club: {}, EndDate: {} < Now: {}", 
+                    register.getSubscriptionId(),
+                    register.getUser().getEmail(),
+                    register.getMembershipPackage().getClub().getClubName(),
+                    register.getEndDate(),
+                    now);
+            
+            return true;
+        }
+        
+        // Log lý do không update
+        if (register.getStatus() != JoinStatus.DaDuyet) {
+            log.debug("❌ Skip: Status is not DaDuyet (current: {})", register.getStatus());
+        } else if (register.getIsPaid() == null || !register.getIsPaid()) {
+            log.debug("❌ Skip: Not paid yet");
+        } else if (register.getEndDate() == null) {
+            log.debug("❌ Skip: No endDate");
+        } else if (!register.getEndDate().isBefore(now)) {
+            log.debug("❌ Skip: Not expired yet (endDate: {} >= now: {})", register.getEndDate(), now);
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Helper: Kiểm tra và update expiry cho danh sách registers
+     * 
+     * @param registers Danh sách cần kiểm tra
+     */
+    private void checkAndUpdateExpiryBatch(List<Registers> registers) {
+        int updatedCount = 0;
+        for (Registers register : registers) {
+            if (checkAndUpdateExpiry(register)) {
+                updatedCount++;
+            }
+        }
+        if (updatedCount > 0) {
+            log.info("Auto-updated {} expired memberships to HetHan", updatedCount);
+        }
+    }
+    
+    /**
      * Lấy danh sách tất cả CLB đang hoạt động (Public)
      * Có thể search theo tên và filter theo category
      */
@@ -273,24 +342,58 @@ public class ClubService {
     }
     
     /**
-     * Lấy danh sách CLB mà student đã tham gia (đã duyệt và đã đóng phí)
+     * Lấy danh sách CLB mà student đã tham gia (bao gồm đang hoạt động và hết hạn)
      * @param userId ID của user (student)
-     * @return Danh sách CLB mà user đã tham gia
+     * @return Danh sách CLB mà user đã tham gia (DaDuyet hoặc HetHan)
      */
     public List<JoinedClubResponse> getJoinedClubsByUser(String userId) {
         // Lấy user
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
-        // Lấy tất cả đăng ký của user đã tham gia (DaDuyet và đã đóng phí)
-        List<Registers> registers = registerRepository.findByUserAndStatusAndIsPaid(
-                user, JoinStatus.DaDuyet, true);
+        // Lấy tất cả đăng ký của user
+        List<Registers> allRegisters = registerRepository.findByUser(user);
+        
+        // Lazy evaluation: Check và update expiry trước
+        checkAndUpdateExpiryBatch(allRegisters);
+        
+        // ✅ QUAN TRỌNG: Re-fetch từ DB sau khi update để có status mới
+        allRegisters = registerRepository.findByUser(user);
+        
+        // Filter: Chỉ lấy DaDuyet (đã thanh toán) hoặc HetHan
+        List<Registers> registers = allRegisters.stream()
+                .filter(r -> {
+                    // DaDuyet + đã thanh toán HOẶC HetHan
+                    if (r.getStatus() == JoinStatus.DaDuyet && r.getIsPaid()) {
+                        return true;
+                    }
+                    return r.getStatus() == JoinStatus.HetHan;
+                })
+                .collect(Collectors.toList());
+        
+        // Log để debug
+        log.debug("Found {} registers after filtering (DaDuyet paid or HetHan)", registers.size());
         
         // Chuyển đổi sang JoinedClubResponse
         return registers.stream()
                 .map(register -> {
                     Clubs club = register.getMembershipPackage().getClub();
                     ClubResponse clubResponse = clubMapper.toResponse(club);
+                    
+                    // Tính isExpired: endDate < now
+                    boolean isExpired = register.getEndDate() != null 
+                            && register.getEndDate().isBefore(LocalDateTime.now());
+                    
+                    // Tính canRenew: status = HetHan
+                    boolean canRenew = register.getStatus() == JoinStatus.HetHan;
+                    
+                    // Log để debug
+                    log.debug("Register {}: status={}, endDate={}, isExpired={}, canRenew={}", 
+                            register.getSubscriptionId(), 
+                            register.getStatus(), 
+                            register.getEndDate(),
+                            isExpired, 
+                            canRenew);
                     
                     return JoinedClubResponse.builder()
                             .clubId(clubResponse.getClubId())
@@ -305,10 +408,15 @@ public class ClubService {
                             .founderId(clubResponse.getFounderId())
                             .founderName(clubResponse.getFounderName())
                             .founderStudentCode(clubResponse.getFounderStudentCode())
+                            // Thêm các field mới cho gia hạn
+                            .subscriptionId(register.getSubscriptionId())
+                            .packageId(register.getMembershipPackage().getPackageId())
+                            .packageName(register.getMembershipPackage().getPackageName())
                             .clubRole(register.getClubRole())
                             .joinedAt(register.getJoinDate())
                             .endDate(register.getEndDate())
-                            .packageName(register.getMembershipPackage().getPackageName())
+                            .canRenew(canRenew)
+                            .isExpired(isExpired)
                             .build();
                 })
                 .collect(Collectors.toList());

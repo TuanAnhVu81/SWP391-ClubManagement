@@ -53,6 +53,8 @@ public enum ErrorCode {
     REGISTER_NOT_FOUND(5007, "Không tìm thấy đăng ký", HttpStatus.NOT_FOUND),
     PRESIDENT_CANNOT_LEAVE(5008, "Chủ tịch câu lạc bộ không thể rời khỏi câu lạc bộ. Vui lòng chuyển quyền lãnh đạo trước.", HttpStatus.FORBIDDEN),
     NOT_ACTIVE_MEMBER(5009, "Bạn không phải là thành viên hoạt động của câu lạc bộ này", HttpStatus.BAD_REQUEST),
+    MEMBERSHIP_NOT_EXPIRED(5010, "Gói membership chưa hết hạn, không thể gia hạn", HttpStatus.BAD_REQUEST),
+    CANNOT_RENEW_SUBSCRIPTION(5011, "Không thể gia hạn đăng ký này. Chỉ gia hạn được khi trạng thái là HetHan", HttpStatus.BAD_REQUEST),
     
     // --- Application Related Errors (Lỗi đơn đăng ký - 6xxx) ---
     APPLICATION_NOT_FOUND(6001, "Không tìm thấy đơn đăng ký", HttpStatus.NOT_FOUND),

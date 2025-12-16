@@ -49,5 +49,9 @@ public class RegisterResponse {
     LocalDateTime startDate;
     LocalDateTime endDate;
     LocalDateTime joinDate;
+    
+    // Thông tin gia hạn (cho FE hiển thị nút gia hạn)
+    Boolean canRenew; // true nếu status = HetHan, false nếu còn hạn hoặc không phù hợp
+    Boolean isExpired; // true nếu endDate < now
 }
 

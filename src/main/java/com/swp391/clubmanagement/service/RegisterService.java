@@ -1,6 +1,7 @@
 package com.swp391.clubmanagement.service;
 
 import com.swp391.clubmanagement.dto.request.JoinClubRequest;
+import com.swp391.clubmanagement.dto.request.RenewMembershipRequest;
 import com.swp391.clubmanagement.dto.response.RegisterResponse;
 import com.swp391.clubmanagement.entity.Memberships;
 import com.swp391.clubmanagement.entity.Registers;
@@ -21,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -41,6 +43,52 @@ public class RegisterService {
         String email = context.getAuthentication().getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    /**
+     * Helper: Kiểm tra và tự động cập nhật status nếu membership đã hết hạn
+     * (Lazy Evaluation - chỉ check khi cần)
+     * 
+     * @param register Register cần kiểm tra
+     * @return true nếu đã update status, false nếu chưa hết hạn
+     */
+    private boolean checkAndUpdateExpiry(Registers register) {
+        // Chỉ check nếu: status = DaDuyet + đã thanh toán + có endDate
+        if (register.getStatus() == JoinStatus.DaDuyet 
+            && register.getIsPaid() != null && register.getIsPaid()
+            && register.getEndDate() != null
+            && register.getEndDate().isBefore(LocalDateTime.now())) {
+            
+            // Update status thành HetHan
+            register.setStatus(JoinStatus.HetHan);
+            registerRepository.save(register);
+            
+            log.info("Auto-updated subscription {} to HetHan. User: {}, Club: {}, EndDate: {}", 
+                    register.getSubscriptionId(),
+                    register.getUser().getEmail(),
+                    register.getMembershipPackage().getClub().getClubName(),
+                    register.getEndDate());
+            
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Helper: Kiểm tra và update expiry cho danh sách registers
+     * 
+     * @param registers Danh sách cần kiểm tra
+     */
+    private void checkAndUpdateExpiryBatch(List<Registers> registers) {
+        int updatedCount = 0;
+        for (Registers register : registers) {
+            if (checkAndUpdateExpiry(register)) {
+                updatedCount++;
+            }
+        }
+        if (updatedCount > 0) {
+            log.info("Auto-updated {} expired memberships to HetHan", updatedCount);
+        }
     }
 
     /**
@@ -73,6 +121,10 @@ public class RegisterService {
         
         if (existingRegister.isPresent()) {
             Registers oldRegister = existingRegister.get();
+            
+            // Lazy evaluation: Check và update expiry trước khi validate
+            checkAndUpdateExpiry(oldRegister);
+            
             JoinStatus oldStatus = oldRegister.getStatus();
             
             // Nếu đang chờ duyệt -> không cho đăng ký lại
@@ -85,9 +137,9 @@ public class RegisterService {
                 throw new AppException(ErrorCode.ALREADY_MEMBER);
             }
             
-            // Nếu status = TuChoi hoặc DaRoiCLB -> CHO PHÉP tái gia nhập
+            // Nếu status = TuChoi, DaRoiCLB, hoặc HetHan -> CHO PHÉP tái gia nhập
             // Xóa registration cũ để tạo mới (giữ lại lịch sử trong database)
-            if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB) {
+            if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB || oldStatus == JoinStatus.HetHan) {
                 registerRepository.delete(oldRegister);
                 log.info("User {} re-applying to club {} after previous status: {}", 
                         currentUser.getEmail(), clubId, oldStatus);
@@ -113,10 +165,15 @@ public class RegisterService {
 
     /**
      * Xem danh sách các CLB mình đã đăng ký và trạng thái
+     * Tự động kiểm tra và cập nhật status nếu có membership hết hạn
      */
     public List<RegisterResponse> getMyRegistrations() {
         Users currentUser = getCurrentUser();
         List<Registers> registrations = registerRepository.findByUser(currentUser);
+        
+        // Lazy evaluation: Check và update expiry khi user fetch data
+        checkAndUpdateExpiryBatch(registrations);
+        
         return registerMapper.toRegisterResponseList(registrations);
     }
 
@@ -125,12 +182,16 @@ public class RegisterService {
      * Cho phép:
      * 1. User xem đăng ký của chính mình
      * 2. Leader (ChuTich, PhoChuTich) của CLB xem đăng ký trong CLB của họ
+     * Tự động kiểm tra và cập nhật status nếu membership hết hạn
      */
     public RegisterResponse getRegistrationById(Integer subscriptionId) {
         Users currentUser = getCurrentUser();
         
         Registers register = registerRepository.findById(subscriptionId)
                 .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
+        
+        // Lazy evaluation: Check và update expiry khi user fetch data
+        checkAndUpdateExpiry(register);
         
         // Kiểm tra quyền truy cập:
         // 1. User có phải owner của đăng ký này không?
@@ -200,6 +261,78 @@ public class RegisterService {
         
         log.info("User {} left club {} (subscriptionId: {})", 
                 currentUser.getEmail(), clubId, register.getSubscriptionId());
+    }
+
+    /**
+     * Gia hạn membership
+     * @param subscriptionId ID của đăng ký cần gia hạn
+     * @param request packageId (optional): null = gia hạn gói hiện tại, có giá trị = đổi gói
+     * @return RegisterResponse với trạng thái ChoDuyet (chờ thanh toán)
+     */
+    public RegisterResponse renewMembership(Integer subscriptionId, RenewMembershipRequest request) {
+        Users currentUser = getCurrentUser();
+        
+        // Tìm subscription cần gia hạn
+        Registers register = registerRepository.findById(subscriptionId)
+                .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
+        
+        // Kiểm tra subscription có phải của user hiện tại không
+        if (!register.getUser().getUserId().equals(currentUser.getUserId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        
+        // Chỉ cho phép gia hạn khi status = HetHan
+        if (register.getStatus() != JoinStatus.HetHan) {
+            throw new AppException(ErrorCode.CANNOT_RENEW_SUBSCRIPTION);
+        }
+        
+        // Xác định gói membership: giữ gói cũ hoặc đổi gói mới
+        Memberships newPackage;
+        if (request != null && request.getPackageId() != null) {
+            // Đổi sang gói mới (nâng cấp/hạ cấp)
+            newPackage = membershipRepository.findById(request.getPackageId())
+                    .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
+            
+            // Kiểm tra gói mới có cùng CLB không
+            if (!newPackage.getClub().getClubId().equals(register.getMembershipPackage().getClub().getClubId())) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            
+            // Kiểm tra gói mới có active không
+            if (!newPackage.getIsActive()) {
+                throw new AppException(ErrorCode.PACKAGE_NOT_ACTIVE);
+            }
+            
+            log.info("User {} upgrading/downgrading from package {} to package {}", 
+                    currentUser.getEmail(), 
+                    register.getMembershipPackage().getPackageName(), 
+                    newPackage.getPackageName());
+        } else {
+            // Giữ gói hiện tại
+            newPackage = register.getMembershipPackage();
+            log.info("User {} renewing same package {}", 
+                    currentUser.getEmail(), 
+                    newPackage.getPackageName());
+        }
+        
+        // Cập nhật subscription để gia hạn (không xóa, giữ lại lịch sử)
+        register.setMembershipPackage(newPackage);
+        register.setStatus(JoinStatus.ChoDuyet); // Chờ thanh toán
+        register.setIsPaid(false);
+        register.setPaymentDate(null);
+        register.setPaymentMethod(null);
+        // Reset PayOS fields để tạo payment link mới
+        register.setPayosOrderCode(null);
+        register.setPayosPaymentLinkId(null);
+        register.setPayosReference(null);
+        // Giữ nguyên startDate, endDate cũ (sẽ update sau khi thanh toán thành công)
+        
+        registerRepository.save(register);
+        
+        log.info("User {} successfully renewed subscription {} with package {}", 
+                currentUser.getEmail(), subscriptionId, newPackage.getPackageName());
+        
+        return registerMapper.toRegisterResponse(register);
     }
 }
 

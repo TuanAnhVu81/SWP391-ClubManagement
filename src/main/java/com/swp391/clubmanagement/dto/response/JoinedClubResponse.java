@@ -31,9 +31,15 @@ public class JoinedClubResponse {
     String founderStudentCode;
     
     // Thông tin thành viên của user trong CLB này
+    Integer subscriptionId; // ID của đăng ký (để gọi API gia hạn)
+    Integer packageId; // ID của gói membership
+    String packageName; // Tên gói membership
     ClubRoleType clubRole; // Vai trò của user trong CLB
     LocalDateTime joinedAt; // Ngày tham gia
     LocalDateTime endDate; // Ngày hết hạn membership
-    String packageName; // Tên gói membership
+    
+    // Thông tin gia hạn (cho FE hiển thị nút gia hạn)
+    Boolean canRenew; // true nếu status = HetHan, false nếu còn hạn
+    Boolean isExpired; // true nếu endDate < now
 }
 
