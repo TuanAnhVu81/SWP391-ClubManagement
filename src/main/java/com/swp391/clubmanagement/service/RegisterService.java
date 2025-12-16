@@ -142,30 +142,17 @@ public class RegisterService {
             // Thay vào đó, cập nhật lại registration cũ để tái sử dụng
             if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB || oldStatus == JoinStatus.HetHan) {
                 // Cập nhật lại registration cũ thay vì xóa
-                // QUAN TRỌNG: Giữ lại thông tin thanh toán cũ (isPaid, paymentDate) để không mất doanh thu
-                // Khi member đã thanh toán trước đó, không reset paymentDate để doanh thu không bị trừ
+                // Giữ lại thông tin thanh toán cũ (isPaid, paymentDate) để không mất doanh thu
                 oldRegister.setStatus(JoinStatus.ChoDuyet);
                 oldRegister.setJoinReason(request.getJoinReason());
-                
-                // Chỉ reset isPaid và paymentDate nếu:
-                // 1. Status cũ là HetHan (đã hết hạn, cần thanh toán lại)
-                // 2. Hoặc chưa thanh toán (isPaid = false/null)
-                // KHÔNG reset nếu đã thanh toán trước đó (DaRoiCLB với isPaid = true) để giữ lại doanh thu
-                boolean shouldResetPayment = oldStatus == JoinStatus.HetHan 
-                        || (oldRegister.getIsPaid() == null || !oldRegister.getIsPaid());
-                
-                if (shouldResetPayment) {
+                // Reset các trường thanh toán mới (sẽ được set lại khi thanh toán)
+                // NHƯNG giữ lại thông tin thanh toán cũ nếu đã thanh toán trước đó
+                // Chỉ reset nếu chưa thanh toán hoặc đã hết hạn
+                if (oldStatus == JoinStatus.HetHan || (oldRegister.getIsPaid() != null && !oldRegister.getIsPaid())) {
                     oldRegister.setIsPaid(false);
                     oldRegister.setPaymentDate(null);
                     oldRegister.setPaymentMethod(null);
-                } else {
-                    // Giữ lại thông tin thanh toán cũ để không mất doanh thu
-                    // Khi thanh toán lại, paymentDate mới sẽ được set (ghi đè)
-                    // Nhưng doanh thu tháng cũ vẫn được tính vì paymentDate cũ đã được lưu trong tháng đó
-                    log.info("Keeping old payment info for revenue tracking: isPaid={}, paymentDate={}", 
-                            oldRegister.getIsPaid(), oldRegister.getPaymentDate());
                 }
-                
                 // Reset PayOS fields để tạo payment link mới
                 oldRegister.setPayosOrderCode(null);
                 oldRegister.setPayosPaymentLinkId(null);
@@ -175,8 +162,8 @@ public class RegisterService {
                 oldRegister.setEndDate(null);
                 
                 registerRepository.save(oldRegister);
-                log.info("User {} re-applying to club {} after previous status: {} (reusing registration {}, resetPayment={})", 
-                        currentUser.getEmail(), clubId, oldStatus, oldRegister.getSubscriptionId(), shouldResetPayment);
+                log.info("User {} re-applying to club {} after previous status: {} (reusing registration {})", 
+                        currentUser.getEmail(), clubId, oldStatus, oldRegister.getSubscriptionId());
                 
                 return registerMapper.toRegisterResponse(oldRegister);
             }
