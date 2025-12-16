@@ -285,17 +285,11 @@ public class ClubService {
                 .count();
         
         // Thống kê tài chính - Tính doanh thu theo tháng (chỉ tính những người đã trả tiền, trừ founder)
-        // QUAN TRỌNG: Tính doanh thu từ TẤT CẢ member đã thanh toán, bất kể status hiện tại
-        // (kể cả DaRuyet, ChoDuyet, DaRoiCLB, HetHan) - không trừ doanh thu khi member rời club hoặc bị kick
-        // Khi member tham gia lại và thanh toán, doanh thu sẽ được cộng thêm
         Users founder = club.getFounder();
         YearMonth currentMonth = YearMonth.now();
         BigDecimal totalRevenue = allRegisters.stream()
+                .filter(r -> r.getIsPaid() && r.getPaymentDate() != null)
                 .filter(r -> {
-                    // Chỉ tính những registration đã thanh toán
-                    if (r.getIsPaid() == null || !r.getIsPaid() || r.getPaymentDate() == null) {
-                        return false;
-                    }
                     // Loại trừ tiền của founder
                     if (founder != null && r.getUser().getUserId().equals(founder.getUserId())) {
                         return false;
@@ -305,18 +299,7 @@ public class ClubService {
                     YearMonth paymentMonth = YearMonth.from(paymentDate);
                     return paymentMonth.equals(currentMonth);
                 })
-                // Không filter theo status - tính tất cả member đã thanh toán
-                // Bao gồm cả member mới tham gia lại sau khi rời (DaRoiCLB) và đã thanh toán
-                .map(r -> {
-                    log.debug("Calculating revenue: subscriptionId={}, userId={}, status={}, isPaid={}, paymentDate={}, price={}", 
-                            r.getSubscriptionId(), 
-                            r.getUser().getUserId(), 
-                            r.getStatus(), 
-                            r.getIsPaid(), 
-                            r.getPaymentDate(), 
-                            r.getMembershipPackage().getPrice());
-                    return r.getMembershipPackage().getPrice();
-                })
+                .map(r -> r.getMembershipPackage().getPrice())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         long paidCount = allRegisters.stream()
