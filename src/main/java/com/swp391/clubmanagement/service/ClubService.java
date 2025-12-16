@@ -285,10 +285,12 @@ public class ClubService {
                 .count();
         
         // Thống kê tài chính - Tính doanh thu theo tháng (chỉ tính những người đã trả tiền, trừ founder)
+        // QUAN TRỌNG: Tính doanh thu từ TẤT CẢ member đã thanh toán, bất kể status hiện tại
+        // (kể cả DaRoiCLB, HetHan) - không trừ doanh thu khi member rời club hoặc bị kick
         Users founder = club.getFounder();
         YearMonth currentMonth = YearMonth.now();
         BigDecimal totalRevenue = allRegisters.stream()
-                .filter(r -> r.getIsPaid() && r.getPaymentDate() != null)
+                .filter(r -> r.getIsPaid() != null && r.getIsPaid() && r.getPaymentDate() != null)
                 .filter(r -> {
                     // Loại trừ tiền của founder
                     if (founder != null && r.getUser().getUserId().equals(founder.getUserId())) {
@@ -299,6 +301,7 @@ public class ClubService {
                     YearMonth paymentMonth = YearMonth.from(paymentDate);
                     return paymentMonth.equals(currentMonth);
                 })
+                // Không filter theo status - tính tất cả member đã thanh toán, kể cả đã rời (DaRoiCLB)
                 .map(r -> r.getMembershipPackage().getPrice())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
