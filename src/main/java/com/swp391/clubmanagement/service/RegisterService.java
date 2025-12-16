@@ -138,15 +138,51 @@ public class RegisterService {
             }
             
             // Nếu status = TuChoi, DaRoiCLB, hoặc HetHan -> CHO PHÉP tái gia nhập
-            // Xóa registration cũ để tạo mới (giữ lại lịch sử trong database)
+            // QUAN TRỌNG: Không xóa registration cũ để giữ lại lịch sử thanh toán (doanh thu)
+            // Thay vào đó, cập nhật lại registration cũ để tái sử dụng
             if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB || oldStatus == JoinStatus.HetHan) {
-                registerRepository.delete(oldRegister);
-                log.info("User {} re-applying to club {} after previous status: {}", 
-                        currentUser.getEmail(), clubId, oldStatus);
+                // Cập nhật lại registration cũ thay vì xóa
+                // QUAN TRỌNG: Giữ lại thông tin thanh toán cũ (isPaid, paymentDate) để không mất doanh thu
+                // Khi member đã thanh toán trước đó, không reset paymentDate để doanh thu không bị trừ
+                oldRegister.setStatus(JoinStatus.ChoDuyet);
+                oldRegister.setJoinReason(request.getJoinReason());
+                
+                // Chỉ reset isPaid và paymentDate nếu:
+                // 1. Status cũ là HetHan (đã hết hạn, cần thanh toán lại)
+                // 2. Hoặc chưa thanh toán (isPaid = false/null)
+                // KHÔNG reset nếu đã thanh toán trước đó (DaRoiCLB với isPaid = true) để giữ lại doanh thu
+                boolean shouldResetPayment = oldStatus == JoinStatus.HetHan 
+                        || (oldRegister.getIsPaid() == null || !oldRegister.getIsPaid());
+                
+                if (shouldResetPayment) {
+                    oldRegister.setIsPaid(false);
+                    oldRegister.setPaymentDate(null);
+                    oldRegister.setPaymentMethod(null);
+                } else {
+                    // Giữ lại thông tin thanh toán cũ để không mất doanh thu
+                    // Khi thanh toán lại, paymentDate mới sẽ được set (ghi đè)
+                    // Nhưng doanh thu tháng cũ vẫn được tính vì paymentDate cũ đã được lưu trong tháng đó
+                    log.info("Keeping old payment info for revenue tracking: isPaid={}, paymentDate={}", 
+                            oldRegister.getIsPaid(), oldRegister.getPaymentDate());
+                }
+                
+                // Reset PayOS fields để tạo payment link mới
+                oldRegister.setPayosOrderCode(null);
+                oldRegister.setPayosPaymentLinkId(null);
+                oldRegister.setPayosReference(null);
+                // Reset startDate và endDate (sẽ được set lại khi thanh toán)
+                oldRegister.setStartDate(null);
+                oldRegister.setEndDate(null);
+                
+                registerRepository.save(oldRegister);
+                log.info("User {} re-applying to club {} after previous status: {} (reusing registration {}, resetPayment={})", 
+                        currentUser.getEmail(), clubId, oldStatus, oldRegister.getSubscriptionId(), shouldResetPayment);
+                
+                return registerMapper.toRegisterResponse(oldRegister);
             }
         }
         
-        // Tạo đăng ký mới
+        // Tạo đăng ký mới (chỉ khi chưa có registration cũ)
         Registers register = Registers.builder()
                 .user(currentUser)
                 .membershipPackage(membershipPackage)
