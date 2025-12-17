@@ -134,4 +134,24 @@ public class ClubController {
                 .result(responses)
                 .build();
     }
+    
+    /**
+     * DELETE /api/clubs/{clubId}
+     * Xóa CLB (Admin only)
+     * - Chuyển Chủ tịch về role SinhVien
+     * - Xóa tất cả registrations của club
+     * - Xóa club
+     */
+    @DeleteMapping("/{clubId}")
+    @PreAuthorize("hasAuthority('SCOPE_Admin')")
+    @Operation(summary = "Xóa CLB (Admin only)", 
+               description = "Xóa CLB, chuyển Chủ tịch về SinhVien, và xóa tất cả registrations")
+    public ApiResponse<Void> deleteClub(@PathVariable Integer clubId) {
+        
+        clubService.deleteClub(clubId);
+        
+        return ApiResponse.<Void>builder()
+                .message("Xóa câu lạc bộ thành công")
+                .build();
+    }
 }

@@ -16,7 +16,9 @@ import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.mapper.ClubMapper;
 import com.swp391.clubmanagement.repository.ClubRepository;
 import com.swp391.clubmanagement.repository.RegisterRepository;
+import com.swp391.clubmanagement.repository.RoleRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
+import com.swp391.clubmanagement.enums.RoleType;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -42,6 +44,7 @@ public class ClubService {
     ClubRepository clubRepository;
     RegisterRepository registerRepository;
     UserRepository userRepository;
+    RoleRepository roleRepository;
     ClubMapper clubMapper;
     
     /**
@@ -420,5 +423,60 @@ public class ClubService {
                             .build();
                 })
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Xóa CLB (Admin only)
+     * - Tìm tất cả members của club
+     * - Chuyển Chủ tịch về role SinhVien
+     * - Xóa tất cả registrations của club
+     * - Xóa club
+     */
+    @Transactional
+    public void deleteClub(Integer clubId) {
+        // Tìm CLB
+        Clubs club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new AppException(ErrorCode.CLUB_NOT_FOUND));
+        
+        // Lấy tất cả registrations của CLB
+        List<Registers> allRegistrations = registerRepository.findByMembershipPackage_Club_ClubId(clubId);
+        
+        log.info("Deleting club {} with {} registrations", clubId, allRegistrations.size());
+        
+        // Tìm Chủ tịch của CLB (nếu có)
+        List<Registers> presidentRegistrations = allRegistrations.stream()
+                .filter(r -> r.getClubRole() == ClubRoleType.ChuTich)
+                .filter(r -> r.getStatus() == JoinStatus.DaDuyet)
+                .filter(r -> r.getIsPaid() != null && r.getIsPaid())
+                .collect(Collectors.toList());
+        
+        // Chuyển tất cả Chủ tịch về role SinhVien
+        for (Registers presidentReg : presidentRegistrations) {
+            Users president = presidentReg.getUser();
+            
+            // Kiểm tra role hiện tại của president
+            if (president.getRole().getRoleName() == RoleType.ChuTich) {
+                // Chuyển về SinhVien
+                var sinhVienRole = roleRepository.findByRoleName(RoleType.SinhVien)
+                        .orElseThrow(() -> {
+                            log.error("SinhVien role not found in database. Please check ApplicationInitConfig.");
+                            return new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                        });
+                
+                president.setRole(sinhVienRole);
+                userRepository.save(president);
+                
+                log.info("Changed president {} role from ChuTich to SinhVien (club {} is being deleted)", 
+                        president.getEmail(), clubId);
+            }
+        }
+        
+        // Xóa tất cả registrations của club
+        registerRepository.deleteAll(allRegistrations);
+        log.info("Deleted {} registrations for club {}", allRegistrations.size(), clubId);
+        
+        // Xóa club
+        clubRepository.delete(club);
+        log.info("Successfully deleted club {} ({})", clubId, club.getClubName());
     }
 }
