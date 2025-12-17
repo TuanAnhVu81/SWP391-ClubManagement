@@ -138,38 +138,15 @@ public class RegisterService {
             }
             
             // Nếu status = TuChoi, DaRoiCLB, hoặc HetHan -> CHO PHÉP tái gia nhập
-            // QUAN TRỌNG: Không xóa registration cũ để giữ lại lịch sử thanh toán (doanh thu)
-            // Thay vào đó, cập nhật lại registration cũ để tái sử dụng
+            // Xóa registration cũ để tạo mới (giữ lại lịch sử trong database)
             if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB || oldStatus == JoinStatus.HetHan) {
-                // Cập nhật lại registration cũ thay vì xóa
-                // Giữ lại thông tin thanh toán cũ (isPaid, paymentDate) để không mất doanh thu
-                oldRegister.setStatus(JoinStatus.ChoDuyet);
-                oldRegister.setJoinReason(request.getJoinReason());
-                // Reset các trường thanh toán mới (sẽ được set lại khi thanh toán)
-                // NHƯNG giữ lại thông tin thanh toán cũ nếu đã thanh toán trước đó
-                // Chỉ reset nếu chưa thanh toán hoặc đã hết hạn
-                if (oldStatus == JoinStatus.HetHan || (oldRegister.getIsPaid() != null && !oldRegister.getIsPaid())) {
-                    oldRegister.setIsPaid(false);
-                    oldRegister.setPaymentDate(null);
-                    oldRegister.setPaymentMethod(null);
-                }
-                // Reset PayOS fields để tạo payment link mới
-                oldRegister.setPayosOrderCode(null);
-                oldRegister.setPayosPaymentLinkId(null);
-                oldRegister.setPayosReference(null);
-                // Reset startDate và endDate (sẽ được set lại khi thanh toán)
-                oldRegister.setStartDate(null);
-                oldRegister.setEndDate(null);
-                
-                registerRepository.save(oldRegister);
-                log.info("User {} re-applying to club {} after previous status: {} (reusing registration {})", 
-                        currentUser.getEmail(), clubId, oldStatus, oldRegister.getSubscriptionId());
-                
-                return registerMapper.toRegisterResponse(oldRegister);
+                registerRepository.delete(oldRegister);
+                log.info("User {} re-applying to club {} after previous status: {}", 
+                        currentUser.getEmail(), clubId, oldStatus);
             }
         }
         
-        // Tạo đăng ký mới (chỉ khi chưa có registration cũ)
+        // Tạo đăng ký mới
         Registers register = Registers.builder()
                 .user(currentUser)
                 .membershipPackage(membershipPackage)

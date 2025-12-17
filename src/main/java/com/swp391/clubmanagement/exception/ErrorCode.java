@@ -55,6 +55,7 @@ public enum ErrorCode {
     NOT_ACTIVE_MEMBER(5009, "Bạn không phải là thành viên hoạt động của câu lạc bộ này", HttpStatus.BAD_REQUEST),
     MEMBERSHIP_NOT_EXPIRED(5010, "Gói membership chưa hết hạn, không thể gia hạn", HttpStatus.BAD_REQUEST),
     CANNOT_RENEW_SUBSCRIPTION(5011, "Không thể gia hạn đăng ký này. Chỉ gia hạn được khi trạng thái là HetHan", HttpStatus.BAD_REQUEST),
+    ALREADY_CLUB_MEMBER(5012, "Bạn đang là thành viên của câu lạc bộ khác. Không thể tạo câu lạc bộ mới khi vẫn còn là thành viên.", HttpStatus.BAD_REQUEST),
     
     // --- Application Related Errors (Lỗi đơn đăng ký - 6xxx) ---
     APPLICATION_NOT_FOUND(6001, "Không tìm thấy đơn đăng ký", HttpStatus.NOT_FOUND),

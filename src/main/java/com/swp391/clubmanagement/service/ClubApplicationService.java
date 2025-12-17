@@ -59,6 +59,19 @@ public class ClubApplicationService {
         Users creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
+        // KIỂM TRA: User không được là thành viên active của CLB nào khác
+        // Kiểm tra dựa trên bảng Registers (không dựa vào Role trong Users vì role có thể thay đổi)
+        // Active member = status DaDuyet + isPaid = true
+        List<Registers> activeRegistrations = registerRepository.findByUserAndStatusAndIsPaid(
+                creator, JoinStatus.DaDuyet, true);
+        
+        if (!activeRegistrations.isEmpty()) {
+            // User đang là thành viên active của ít nhất 1 CLB
+            log.warn("User {} is already an active member of {} club(s). Cannot create new club application.", 
+                    creator.getEmail(), activeRegistrations.size());
+            throw new AppException(ErrorCode.ALREADY_CLUB_MEMBER);
+        }
+        
         // Tạo đơn mới
         ClubApplications application = ClubApplications.builder()
                 .creator(creator)
