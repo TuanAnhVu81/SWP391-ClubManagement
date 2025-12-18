@@ -5,7 +5,9 @@ import com.swp391.clubmanagement.dto.response.ClubMemberResponse;
 import com.swp391.clubmanagement.dto.response.ClubResponse;
 import com.swp391.clubmanagement.dto.response.ClubStatsResponse;
 import com.swp391.clubmanagement.dto.response.JoinedClubResponse;
+import com.swp391.clubmanagement.entity.ClubApplications;
 import com.swp391.clubmanagement.entity.Clubs;
+import com.swp391.clubmanagement.entity.Memberships;
 import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.ClubCategory;
@@ -14,7 +16,9 @@ import com.swp391.clubmanagement.enums.JoinStatus;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.mapper.ClubMapper;
+import com.swp391.clubmanagement.repository.ClubApplicationRepository;
 import com.swp391.clubmanagement.repository.ClubRepository;
+import com.swp391.clubmanagement.repository.MembershipRepository;
 import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.RoleRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
@@ -42,6 +46,8 @@ import java.util.stream.Collectors;
 public class ClubService {
     
     ClubRepository clubRepository;
+    ClubApplicationRepository clubApplicationRepository;
+    MembershipRepository membershipRepository;
     RegisterRepository registerRepository;
     UserRepository userRepository;
     RoleRepository roleRepository;
@@ -430,7 +436,15 @@ public class ClubService {
      * - Tìm tất cả members của club
      * - Chuyển Chủ tịch về role SinhVien
      * - Xóa tất cả registrations của club
+     * - Xóa tất cả membership packages của club
+     * - Xóa tất cả club applications liên quan
      * - Xóa club
+     * 
+     * Thứ tự xóa quan trọng để tránh foreign key constraint:
+     * 1. Registrations (FK -> Memberships)
+     * 2. Memberships (FK -> Clubs)
+     * 3. ClubApplications (FK -> Clubs)
+     * 4. Clubs
      */
     @Transactional
     public void deleteClub(Integer clubId) {
@@ -441,9 +455,10 @@ public class ClubService {
         // Lấy tất cả registrations của CLB
         List<Registers> allRegistrations = registerRepository.findByMembershipPackage_Club_ClubId(clubId);
         
-        log.info("Deleting club {} with {} registrations", clubId, allRegistrations.size());
+        log.info("🗑️ Deleting club {} ({}) with {} registrations", 
+                clubId, club.getClubName(), allRegistrations.size());
         
-        // Tìm Chủ tịch của CLB (nếu có)
+        // Bước 1: Tìm Chủ tịch của CLB (nếu có) và chuyển về SinhVien
         List<Registers> presidentRegistrations = allRegistrations.stream()
                 .filter(r -> r.getClubRole() == ClubRoleType.ChuTich)
                 .filter(r -> r.getStatus() == JoinStatus.DaDuyet)
@@ -466,17 +481,27 @@ public class ClubService {
                 president.setRole(sinhVienRole);
                 userRepository.save(president);
                 
-                log.info("Changed president {} role from ChuTich to SinhVien (club {} is being deleted)", 
+                log.info("✅ Changed president {} role from ChuTich to SinhVien (club {} is being deleted)", 
                         president.getEmail(), clubId);
             }
         }
         
-        // Xóa tất cả registrations của club
+        // Bước 2: Xóa tất cả registrations của club (FK -> Memberships)
         registerRepository.deleteAll(allRegistrations);
-        log.info("Deleted {} registrations for club {}", allRegistrations.size(), clubId);
+        log.info("✅ Deleted {} registrations for club {}", allRegistrations.size(), clubId);
         
-        // Xóa club
+        // Bước 3: Xóa tất cả membership packages của club (FK -> Clubs)
+        List<Memberships> allMemberships = membershipRepository.findByClub_ClubId(clubId);
+        membershipRepository.deleteAll(allMemberships);
+        log.info("✅ Deleted {} membership packages for club {}", allMemberships.size(), clubId);
+        
+        // Bước 4: Xóa tất cả club applications liên quan (FK -> Clubs)
+        List<ClubApplications> allApplications = clubApplicationRepository.findByClub(club);
+        clubApplicationRepository.deleteAll(allApplications);
+        log.info("✅ Deleted {} club applications for club {}", allApplications.size(), clubId);
+        
+        // Bước 5: Xóa club
         clubRepository.delete(club);
-        log.info("Successfully deleted club {} ({})", clubId, club.getClubName());
+        log.info("✅ Successfully deleted club {} ({})", clubId, club.getClubName());
     }
 }
