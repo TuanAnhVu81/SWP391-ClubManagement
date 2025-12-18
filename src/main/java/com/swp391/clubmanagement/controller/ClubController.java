@@ -143,7 +143,7 @@ public class ClubController {
      * - Xóa club
      */
     @DeleteMapping("/{clubId}")
-    @PreAuthorize("hasAuthority('SCOPE_Admin')")
+    @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
     @Operation(summary = "Xóa CLB (Admin only)", 
                description = "Xóa CLB, chuyển Chủ tịch về SinhVien, và xóa tất cả registrations")
     public ApiResponse<Void> deleteClub(@PathVariable Integer clubId) {
