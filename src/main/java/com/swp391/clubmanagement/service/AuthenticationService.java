@@ -11,9 +11,7 @@ import com.swp391.clubmanagement.dto.request.LogoutRequest;
 import com.swp391.clubmanagement.dto.response.AuthenticationResponse;
 import com.swp391.clubmanagement.dto.response.IntrospectResponse;
 import com.swp391.clubmanagement.entity.Users;
-import com.swp391.clubmanagement.enums.ClubRoleType;
 import com.swp391.clubmanagement.enums.JoinStatus;
-import com.swp391.clubmanagement.enums.RoleType;
 import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.repository.ClubRepository;
@@ -36,7 +34,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * AuthenticationService: Service xử lý logic đăng nhập, đăng xuất và quản lý token.
+ * AuthenticationService - Service xử lý logic xác thực và quản lý JWT token
+ * 
+ * Service này chịu trách nhiệm:
+ * 1. Xác thực người dùng (đăng nhập): Kiểm tra email, mật khẩu, trạng thái tài khoản
+ * 2. Tạo JWT token: Sinh token chứa thông tin user và quyền truy cập
+ * 3. Xác minh token: Kiểm tra tính hợp lệ của token (chữ ký, thời hạn)
+ * 4. Đăng xuất: Xử lý logout (có thể mở rộng thêm blacklist token)
+ * 
+ * Sử dụng thuật toán HS512 để ký và xác minh JWT token.
  */
 @Service
 @RequiredArgsConstructor
@@ -119,7 +125,7 @@ public class AuthenticationService {
      */
     public void logout(LogoutRequest request) throws ParseException, JOSEException {
         try {
-            var signToken = verifyToken(request.getToken());
+            verifyToken(request.getToken());
             // TODO: Logic blacklist token sẽ được implement tại đây (lưu jti + expiryTime)
         } catch (AppException e) {
             log.info("Token already invalid");
