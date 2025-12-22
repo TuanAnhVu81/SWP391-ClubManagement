@@ -272,10 +272,14 @@ public class PayOSController {
      * Webhook endpoint để nhận callback từ PayOS
      * GET: PayOS dùng để verify webhook URL khi save
      * POST: PayOS gửi thông tin thanh toán thực tế
+     * 
+     * Sử dụng @Transactional để đảm bảo thay đổi được commit vào database
+     * và pessimistic lock hoạt động đúng cách
      */
     @RequestMapping(value = "/webhook", method = {RequestMethod.POST, RequestMethod.GET})
     @Operation(summary = "PayOS Webhook", 
                description = "Endpoint nhận callback từ PayOS khi thanh toán thành công (POST) hoặc verify (GET)")
+    @org.springframework.transaction.annotation.Transactional
     public ApiResponse<String> handleWebhook(@RequestBody(required = false) PayOSWebhookData webhookData) {
         log.info("=== WEBHOOK RECEIVED ===");
         
@@ -399,10 +403,12 @@ public class PayOSController {
             LocalDateTime endDate = calculateEndDate(startDate, term);
             register.setEndDate(endDate);
             
-            registerRepository.save(register);
+            // Save và flush để đảm bảo thay đổi được commit ngay lập tức
+            register = registerRepository.save(register);
+            registerRepository.flush(); // Force flush to database
             
-            log.info("✅ Payment processed successfully for subscriptionId: {}, orderCode: {}, membership valid until: {}", 
-                    register.getSubscriptionId(), orderCode, endDate);
+            log.info("✅ Payment processed successfully for subscriptionId: {}, orderCode: {}, isPaid: {}, membership valid until: {}", 
+                    register.getSubscriptionId(), orderCode, register.getIsPaid(), endDate);
             
             return ApiResponse.<String>builder()
                     .result("Payment processed successfully")
