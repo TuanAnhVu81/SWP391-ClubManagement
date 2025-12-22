@@ -118,8 +118,11 @@ public class PaymentHistoryService {
         Clubs club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new AppException(ErrorCode.CLUB_NOT_FOUND));
         
+        // Điều chỉnh endDate thành cuối ngày để tính đủ cả ngày hôm đó
+        LocalDateTime adjustedEndDate = endDate.toLocalDate().atTime(23, 59, 59, 999999999);
+        
         List<Object[]> results = paymentHistoryRepository.calculateRevenueByClubByMonth(
-                clubId, startDate, endDate);
+                clubId, startDate, adjustedEndDate);
         
         return results.stream().map(result -> {
             Integer year = ((Number) result[0]).intValue();
@@ -143,7 +146,10 @@ public class PaymentHistoryService {
      */
     public List<RevenueResponse> calculateRevenueByMonth(
             LocalDateTime startDate, LocalDateTime endDate) {
-        List<Object[]> results = paymentHistoryRepository.calculateRevenueByMonth(startDate, endDate);
+        // Điều chỉnh endDate thành cuối ngày để tính đủ cả ngày hôm đó
+        LocalDateTime adjustedEndDate = endDate.toLocalDate().atTime(23, 59, 59, 999999999);
+        
+        List<Object[]> results = paymentHistoryRepository.calculateRevenueByMonth(startDate, adjustedEndDate);
         
         return results.stream().map(result -> {
             Integer year = ((Number) result[0]).intValue();
