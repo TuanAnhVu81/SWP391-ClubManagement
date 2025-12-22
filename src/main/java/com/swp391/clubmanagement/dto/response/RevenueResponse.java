@@ -57,7 +57,7 @@ class RevenueByClubResponse {
 }
 
 /**
- * RevenueByPackageResponse - DTO cho doanh thu theo từng gói
+ * RevenueByPackageResponse - DTO cho doanh thu theo từng góigit
  */
 @Data
 @NoArgsConstructor
