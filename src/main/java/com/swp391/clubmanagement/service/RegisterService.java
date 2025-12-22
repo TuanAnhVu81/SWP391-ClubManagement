@@ -138,15 +138,38 @@ public class RegisterService {
             }
             
             // Nếu status = TuChoi, DaRoiCLB, hoặc HetHan -> CHO PHÉP tái gia nhập
-            // Xóa registration cũ để tạo mới (giữ lại lịch sử trong database)
+            // TÁI SỬ DỤNG registration cũ thay vì xóa (để tránh conflict với PaymentHistory)
             if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB || oldStatus == JoinStatus.HetHan) {
-                registerRepository.delete(oldRegister);
-                log.info("User {} re-applying to club {} after previous status: {}", 
+                log.info("User {} re-applying to club {} after previous status: {}. Reusing existing registration.", 
                         currentUser.getEmail(), clubId, oldStatus);
+                
+                // Cập nhật registration cũ về trạng thái như mới đăng ký
+                oldRegister.setMembershipPackage(membershipPackage);
+                oldRegister.setStatus(JoinStatus.ChoDuyet);
+                oldRegister.setJoinReason(request.getJoinReason());
+                oldRegister.setIsPaid(false);
+                oldRegister.setPaymentDate(null);
+                oldRegister.setPaymentMethod(null);
+                oldRegister.setApprover(null);
+                oldRegister.setStartDate(null);
+                oldRegister.setEndDate(null);
+                oldRegister.setJoinDate(null);
+                // Reset PayOS fields
+                oldRegister.setPayosOrderCode(null);
+                oldRegister.setPayosPaymentLinkId(null);
+                oldRegister.setPayosReference(null);
+                // Giữ nguyên clubRole (ThanhVien) - không reset
+                
+                registerRepository.save(oldRegister);
+                log.info("User {} registered for package {} (Club: {}) with reason: {}", 
+                        currentUser.getEmail(), membershipPackage.getPackageName(), 
+                        membershipPackage.getClub().getClubName(), request.getJoinReason());
+                
+                return registerMapper.toRegisterResponse(oldRegister);
             }
         }
         
-        // Tạo đăng ký mới
+        // Tạo đăng ký mới (chỉ khi chưa có registration cũ)
         Registers register = Registers.builder()
                 .user(currentUser)
                 .membershipPackage(membershipPackage)
