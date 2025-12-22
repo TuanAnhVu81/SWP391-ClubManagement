@@ -16,6 +16,7 @@ import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
 import com.swp391.clubmanagement.service.PayOSService;
+import com.swp391.clubmanagement.service.PaymentHistoryService;
 import com.swp391.clubmanagement.utils.DateTimeUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,6 +44,7 @@ public class PayOSController {
     PayOSService payOSService;
     RegisterRepository registerRepository;
     UserRepository userRepository;
+    PaymentHistoryService paymentHistoryService;
     
     @NonFinal
     @Value("${app.base-url}")
@@ -406,6 +408,16 @@ public class PayOSController {
             // Save và flush để đảm bảo thay đổi được commit ngay lập tức
             register = registerRepository.save(register);
             registerRepository.flush(); // Force flush to database
+            
+            // Tạo payment history record để lưu lịch sử giao dịch
+            try {
+                paymentHistoryService.createPaymentHistory(register);
+                log.info("Payment history record created for subscriptionId: {}", register.getSubscriptionId());
+            } catch (Exception e) {
+                // Log lỗi nhưng không throw để không ảnh hưởng đến quá trình thanh toán
+                log.error("Failed to create payment history record for subscriptionId: {}", 
+                        register.getSubscriptionId(), e);
+            }
             
             log.info("✅ Payment processed successfully for subscriptionId: {}, orderCode: {}, isPaid: {}, membership valid until: {}", 
                     register.getSubscriptionId(), orderCode, register.getIsPaid(), endDate);
