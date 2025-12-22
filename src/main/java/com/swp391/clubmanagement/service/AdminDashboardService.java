@@ -23,62 +23,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * AdminDashboardService - Service xử lý logic nghiệp vụ cho Admin Dashboard
- * 
- * Service này cung cấp các thống kê và dữ liệu tổng quan cho Admin Dashboard:
- * - Tổng số CLB đang hoạt động
- * - Tổng số thành viên (đã duyệt và đã thanh toán)
- * - Tổng số sinh viên duy nhất tham gia CLB
- * - Thống kê CLB theo danh mục (category)
- * - Thống kê thành viên theo vai trò (ClubRoleType)
- * - Top 5 CLB có nhiều thành viên nhất
- * - Danh sách CLB mới thành lập trong tháng
- * 
- * Tất cả các method trong service này đều dành cho Admin (kiểm tra quyền ở Controller layer).
- * 
- * @Service - Đánh dấu đây là một Spring Service, được quản lý bởi Spring Container
- * @RequiredArgsConstructor - Lombok tự động tạo constructor với các field final để dependency injection
- * @FieldDefaults - Lombok: tất cả field là PRIVATE và FINAL (immutable dependencies)
- * @Slf4j - Lombok: tự động tạo logger với tên "log" để ghi log
- */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class AdminDashboardService {
-    /**
-     * Repository để truy vấn và thao tác với bảng Clubs trong database
-     */
     ClubRepository clubRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Registers trong database
-     * Dùng để đếm thành viên, thống kê theo role...
-     */
     RegisterRepository registerRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Users trong database
-     */
     UserRepository userRepository;
-    
-    /**
-     * Mapper để chuyển đổi giữa Entity (Clubs) và DTO (ClubResponse)
-     */
     ClubMapper clubMapper;
 
     /**
-     * Lấy tất cả dữ liệu tổng quan cho Admin Dashboard
-     * 
-     * Phương thức này tổng hợp tất cả các thống kê cần thiết cho Admin Dashboard
-     * vào một response object duy nhất, giúp Frontend có thể hiển thị dashboard ngay lập tức.
-     * 
-     * @return AdminDashboardResponse - Object chứa tất cả thống kê: tổng số CLB, thành viên, 
-     *                                  thống kê theo category, role, top 5 CLB, CLB mới...
-     * 
-     * Lưu ý: Method này gọi nhiều method khác, có thể tốn thời gian nếu data lớn
-     *        Có thể cần optimize bằng caching nếu cần thiết
+     * Lấy dữ liệu tổng quan cho Dashboard Admin
      */
     public AdminDashboardResponse getDashboardData() {
         return AdminDashboardResponse.builder()
@@ -94,10 +50,6 @@ public class AdminDashboardService {
 
     /**
      * Tổng số CLB đang hoạt động
-     * 
-     * Phương thức này đếm số lượng CLB có isActive = true trong hệ thống.
-     * 
-     * @return Long - Tổng số CLB đang hoạt động
      */
     public Long getTotalClubs() {
         return clubRepository.countByIsActiveTrue();
@@ -105,15 +57,7 @@ public class AdminDashboardService {
 
     /**
      * Tổng số thành viên (đã duyệt + đã thanh toán)
-     * 
-     * Phương thức này đếm số lượng đơn đăng ký có status = DaDuyet và isPaid = true.
-     * 
-     * Lưu ý quan trọng:
-     * - 1 sinh viên tham gia nhiều CLB = nhiều membership (số lượng sẽ lớn hơn số sinh viên thực tế)
-     * - Ví dụ: Sinh viên A tham gia 2 CLB → đếm là 2 memberships
-     * - Nếu muốn số lượng sinh viên duy nhất, dùng getTotalStudents()
-     * 
-     * @return Long - Tổng số membership (một user có thể có nhiều membership)
+     * 1 sinh viên tham gia nhiều CLB = nhiều membership
      */
     public Long getTotalMembers() {
         return registerRepository.countByStatusAndIsPaid(JoinStatus.DaDuyet, true);
@@ -121,33 +65,13 @@ public class AdminDashboardService {
 
     /**
      * Tổng số sinh viên duy nhất tham gia CLB
-     * 
-     * Phương thức này đếm số lượng user duy nhất (không trùng lặp) đã tham gia CLB.
-     * Khác với getTotalMembers(), method này đếm số user, không đếm số membership.
-     * 
-     * Ví dụ:
-     * - User A tham gia 2 CLB → getTotalMembers() = 2, getTotalStudents() = 1
-     * - User B tham gia 1 CLB → getTotalMembers() = 3, getTotalStudents() = 2
-     * 
-     * @return Long - Tổng số sinh viên duy nhất (mỗi user chỉ đếm 1 lần)
      */
     public Long getTotalStudents() {
         return registerRepository.countDistinctStudents(JoinStatus.DaDuyet, true);
     }
 
     /**
-     * Thống kê số lượng CLB theo danh mục (category)
-     * 
-     * Phương thức này đếm số lượng CLB trong mỗi danh mục (Học thuật, Thể thao, Nghệ thuật...).
-     * Kết quả là một Map với key = tên category (enum name), value = số lượng CLB.
-     * 
-     * Đặc biệt:
-     * - Tất cả các category đều được khởi tạo với giá trị 0 (kể cả category không có CLB)
-     * - Đảm bảo Frontend luôn có đầy đủ data để hiển thị chart/graph
-     * 
-     * @return Map<String, Long> - Map chứa số lượng CLB theo từng category
-     *                             Key: Tên category (ví dụ: "HocThuat", "TheThao")
-     *                             Value: Số lượng CLB trong category đó
+     * Thống kê CLB theo danh mục (category)
      */
     public Map<String, Long> getClubsByCategory() {
         Map<String, Long> result = new HashMap<>();
@@ -171,22 +95,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * Thống kê số lượng thành viên theo vai trò (ClubRoleType)
-     * 
-     * Phương thức này đếm số lượng thành viên trong mỗi vai trò (ChuTich, PhoChuTich, ThuKy, ThanhVien).
-     * Kết quả là một Map với key = tên role (enum name), value = số lượng thành viên.
-     * 
-     * Điều kiện để được đếm:
-     * - status = DaDuyet (đã được duyệt)
-     * - isPaid = true (đã thanh toán)
-     * 
-     * Đặc biệt:
-     * - Tất cả các role đều được khởi tạo với giá trị 0 (kể cả role không có thành viên)
-     * - Đảm bảo Frontend luôn có đầy đủ data để hiển thị chart/graph
-     * 
-     * @return Map<String, Long> - Map chứa số lượng thành viên theo từng role
-     *                             Key: Tên role (ví dụ: "ChuTich", "PhoChuTich", "ThanhVien")
-     *                             Value: Số lượng thành viên có role đó
+     * Thống kê thành viên theo vai trò (ClubRoleType)
      */
     public Map<String, Long> getMembersByRole() {
         Map<String, Long> result = new HashMap<>();
@@ -210,18 +119,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * Lấy Top 5 CLB có nhiều thành viên nhất
-     * 
-     * Phương thức này tìm 5 CLB có số lượng thành viên (membership) nhiều nhất.
-     * Thành viên được đếm phải có status = DaDuyet và isPaid = true.
-     * 
-     * Kết quả được sắp xếp theo số lượng thành viên giảm dần (CLB nhiều thành viên nhất trước).
-     * 
-     * @return List<ClubStatistic> - Danh sách top 5 CLB, mỗi item chứa:
-     *                               - clubId, clubName, clubLogo, category
-     *                               - memberCount (số lượng thành viên)
-     * 
-     * Lưu ý: Chỉ lấy top 5 (limit 5), nếu có nhiều hơn 5 CLB, chỉ lấy 5 CLB đầu tiên
+     * Top 5 CLB có nhiều thành viên nhất
      */
     public List<ClubStatistic> getTop5ClubsByMembers() {
         List<Object[]> data = registerRepository.findTopClubsByMemberCount(JoinStatus.DaDuyet, true);
@@ -239,16 +137,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * Lấy danh sách CLB mới thành lập trong tháng hiện tại
-     * 
-     * Phương thức này tìm tất cả CLB được thành lập trong tháng hiện tại
-     * (establishedDate >= ngày đầu tháng và <= ngày cuối tháng).
-     * 
-     * CLB được coi là "mới" nếu establishedDate nằm trong tháng hiện tại.
-     * 
-     * @return List<ClubResponse> - Danh sách CLB mới thành lập trong tháng, đã được map sang DTO
-     * 
-     * Lưu ý: Sử dụng LocalDate để so sánh (chỉ so sánh ngày, không so sánh giờ)
+     * Danh sách CLB mới trong tháng
      */
     public List<ClubResponse> getNewClubsThisMonth() {
         LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);

@@ -39,92 +39,26 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * ClubService - Service xử lý logic nghiệp vụ cho quản lý Câu lạc bộ (CLB)
- * 
- * Service này chịu trách nhiệm quản lý toàn bộ vòng đời và thông tin của CLB:
- * - Xem danh sách CLB (public, có thể search và filter)
- * - Xem chi tiết CLB (public)
- * - Cập nhật thông tin CLB (leader only: logo, mô tả, địa điểm)
- * - Xem danh sách thành viên CLB (public)
- * - Thống kê CLB (leader only: số thành viên, doanh thu, thành viên chưa đóng phí)
- * - Xem CLB mà user đã tham gia (với thông tin membership và trạng thái)
- * - Xóa CLB (admin only: soft delete với cascade các bản ghi liên quan)
- * 
- * Tính năng đặc biệt:
- * - Tự động kiểm tra và cập nhật status membership hết hạn (lazy evaluation)
- * - Hỗ trợ search và filter CLB theo tên và category
- * - Thống kê chi tiết cho leader (số thành viên, doanh thu, phân loại theo role...)
- * 
- * @Service - Đánh dấu đây là một Spring Service, được quản lý bởi Spring Container
- * @RequiredArgsConstructor - Lombok tự động tạo constructor với các field final để dependency injection
- * @FieldDefaults - Lombok: tất cả field là PRIVATE và FINAL (immutable dependencies)
- * @Slf4j - Lombok: tự động tạo logger với tên "log" để ghi log
- */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class ClubService {
-    /**
-     * Repository để truy vấn và thao tác với bảng Clubs trong database
-     */
+    
     ClubRepository clubRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng ClubApplications trong database
-     * Dùng để xóa đơn đăng ký thành lập CLB khi xóa CLB
-     */
     ClubApplicationRepository clubApplicationRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Memberships trong database
-     * Dùng để xóa các gói membership khi xóa CLB
-     */
     MembershipRepository membershipRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Registers trong database
-     * Dùng để đếm thành viên, lấy danh sách thành viên, thống kê...
-     */
     RegisterRepository registerRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Users trong database
-     * Dùng để lấy thông tin user hiện tại (leader/admin)
-     */
     UserRepository userRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Roles trong database
-     * Dùng để chuyển role của founder về SinhVien khi xóa CLB
-     */
     RoleRepository roleRepository;
-    
-    /**
-     * Mapper để chuyển đổi giữa Entity (Clubs, Registers) và DTO (ClubResponse, ClubMemberResponse...)
-     */
     ClubMapper clubMapper;
     
     /**
      * Helper: Kiểm tra và tự động cập nhật status nếu membership đã hết hạn
      * (Lazy Evaluation - chỉ check khi cần)
      * 
-     * Phương thức này được gọi khi cần kiểm tra membership có hết hạn không.
-     * Thay vì dùng scheduled job để check định kỳ, ta check khi user request data (lazy evaluation).
-     * 
-     * Logic:
-     * - Chỉ check các register có: status = DaDuyet, isPaid = true, có endDate
-     * - Nếu endDate < now → Update status thành HetHan
-     * - Ghi log chi tiết để tracking
-     * 
-     * Ưu điểm của lazy evaluation:
-     * - Không cần chạy scheduled job tốn tài nguyên
-     * - Chỉ update khi thực sự cần thiết (khi user xem data)
-     * - Đảm bảo data được update đúng lúc user cần
-     * 
-     * @param register - Register cần kiểm tra
-     * @return true nếu đã update status thành HetHan, false nếu chưa hết hạn hoặc không cần update
+     * @param register Register cần kiểm tra
+     * @return true nếu đã update status, false nếu chưa hết hạn
      */
     private boolean checkAndUpdateExpiry(Registers register) {
         LocalDateTime now = LocalDateTime.now();
@@ -189,19 +123,8 @@ public class ClubService {
     }
     
     /**
-     * Lấy danh sách tất cả CLB đang hoạt động (Public - không cần authentication)
-     * 
-     * Phương thức này cho phép user xem danh sách CLB trong hệ thống.
-     * Có thể search theo tên và filter theo category để tìm kiếm dễ dàng hơn.
-     * 
-     * @param name - Tên CLB cần tìm (search, có thể là substring). Null = không filter theo tên
-     * @param category - Danh mục CLB cần filter (Học thuật, Thể thao, Nghệ thuật...). Null = không filter
-     * @return List<ClubResponse> - Danh sách CLB đã được map sang DTO, kèm theo tổng số thành viên
-     * 
-     * Lưu ý:
-     * - Chỉ trả về các CLB đang active (isActive = true)
-     * - Tự động đếm tổng số thành viên chính thức (DaDuyet + isPaid = true) cho mỗi CLB
-     * - Public endpoint: Không cần authentication
+     * Lấy danh sách tất cả CLB đang hoạt động (Public)
+     * Có thể search theo tên và filter theo category
      */
     public List<ClubResponse> getAllClubs(String name, ClubCategory category) {
         List<Clubs> clubs;
@@ -225,18 +148,7 @@ public class ClubService {
     }
     
     /**
-     * Xem chi tiết thông tin 1 CLB (Public - không cần authentication)
-     * 
-     * Phương thức này cho phép user xem chi tiết thông tin của một CLB cụ thể,
-     * bao gồm tên, mô tả, logo, địa điểm, email, founder, và tổng số thành viên.
-     * 
-     * @param clubId - ID của CLB cần xem chi tiết
-     * @return ClubResponse - Thông tin chi tiết CLB đã được map sang DTO, kèm tổng số thành viên
-     * @throws AppException với ErrorCode.CLUB_NOT_FOUND nếu không tìm thấy CLB
-     * 
-     * Lưu ý:
-     * - Public endpoint: Không cần authentication, ai cũng có thể xem
-     * - Tự động đếm tổng số thành viên chính thức (DaDuyet + isPaid = true)
+     * Xem chi tiết thông tin 1 CLB (Public)
      */
     public ClubResponse getClubById(Integer clubId) {
         Clubs club = clubRepository.findById(clubId)
@@ -254,24 +166,6 @@ public class ClubService {
     
     /**
      * Cập nhật thông tin CLB - Logo, mô tả, địa điểm sinh hoạt (Leader only)
-     * 
-     * Phương thức này cho phép Leader (founder) của CLB cập nhật một số thông tin cơ bản:
-     * - Logo: URL hình ảnh logo của CLB
-     * - Mô tả: Mô tả chi tiết về CLB, hoạt động, mục tiêu...
-     * - Địa điểm: Nơi sinh hoạt của CLB (phòng, tòa nhà, khu vực...)
-     * 
-     * Business rules:
-     * - Chỉ founder của CLB mới được cập nhật (check bằng founder.userId)
-     * - Các thông tin khác như tên CLB, category, email không thể thay đổi (cần qua đơn đăng ký)
-     * 
-     * @param clubId - ID của CLB cần cập nhật
-     * @param request - DTO chứa thông tin cần cập nhật (logo, description, location)
-     * @return ClubResponse - Thông tin CLB sau khi được cập nhật
-     * @throws AppException với ErrorCode.CLUB_NOT_FOUND nếu không tìm thấy CLB
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user hiện tại
-     * @throws AppException với ErrorCode.NOT_CLUB_LEADER nếu user không phải founder
-     * 
-     * @Transactional - Đảm bảo toàn bộ operations được thực hiện trong một transaction
      */
     @Transactional
     public ClubResponse updateClub(Integer clubId, ClubUpdateRequest request) {
@@ -310,24 +204,7 @@ public class ClubService {
     }
     
     /**
-     * Xem danh sách thành viên của CLB (Public - không cần authentication)
-     * 
-     * Phương thức này cho phép user xem danh sách thành viên chính thức của một CLB.
-     * Chỉ hiển thị những thành viên đã được duyệt và đã thanh toán phí membership.
-     * 
-     * Thông tin hiển thị cho mỗi thành viên:
-     * - Thông tin cá nhân: tên, mã sinh viên, avatar
-     * - Vai trò trong CLB: ChuTich, PhoChuTich, ThuKy, ThanhVien
-     * - Thông tin membership: gói đã đăng ký, ngày tham gia
-     * 
-     * @param clubId - ID của CLB cần xem danh sách thành viên
-     * @return List<ClubMemberResponse> - Danh sách thành viên đã được map sang DTO
-     * @throws AppException với ErrorCode.CLUB_NOT_FOUND nếu không tìm thấy CLB
-     * 
-     * Lưu ý:
-     * - Public endpoint: Không cần authentication, ai cũng có thể xem
-     * - Chỉ hiển thị thành viên có: status = DaDuyet và isPaid = true
-     * - Không hiển thị những đơn đăng ký đang chờ duyệt hoặc đã bị từ chối
+     * Xem danh sách thành viên của CLB (Public)
      */
     public List<ClubMemberResponse> getClubMembers(Integer clubId) {
         // Kiểm tra CLB có tồn tại không
@@ -353,30 +230,8 @@ public class ClubService {
     
     /**
      * Thống kê nội bộ CLB (Leader only)
-     * 
-     * Phương thức này cung cấp thống kê chi tiết về CLB cho Leader:
-     * - Tổng số thành viên (đã duyệt và đã thanh toán)
-     * - Số đơn đăng ký đang chờ duyệt (ChoDuyet)
-     * - Số đơn đăng ký đã bị từ chối (TuChoi)
-     * - Phân loại thành viên theo role: ChuTich, PhoChuTich, ThuKy, ThanhVien
-     * - Doanh thu: Tổng phí membership đã thu trong tháng hiện tại (không tính founder)
-     * - Số thành viên đã thanh toán và chưa thanh toán
-     * - Danh sách chi tiết thành viên chưa đóng phí (để nhắc nhở)
-     * 
-     * Business rules:
-     * - Chỉ Leader (ChuTich, PhoChuTich) hoặc Founder mới được xem thống kê
-     * - Doanh thu chỉ tính trong tháng hiện tại (theo paymentDate)
-     * - Không tính phí của founder (founder được miễn phí)
-     * 
-     * @param clubId - ID của CLB cần xem thống kê
-     * @return ClubStatsResponse - Object chứa tất cả thống kê chi tiết
-     * @throws AppException với ErrorCode.CLUB_NOT_FOUND nếu không tìm thấy CLB
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user hiện tại
-     * @throws AppException với ErrorCode.NOT_CLUB_LEADER nếu user không phải leader/founder
-     * 
-     * Lưu ý:
-     * - Phải là Leader hoặc Founder mới được gọi method này
-     * - Doanh thu tính theo tháng hiện tại, không phải tổng từ trước đến nay
+     * - Số lượng thành viên, tổng doanh thu từ phí thành viên
+     * - Danh sách chưa đóng phí
      */
     public ClubStatsResponse getClubStats(Integer clubId) {
         // Lấy user hiện tại

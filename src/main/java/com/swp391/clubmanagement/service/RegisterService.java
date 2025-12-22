@@ -25,83 +25,22 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * RegisterService - Service xử lý logic nghiệp vụ cho đăng ký tham gia CLB
- * 
- * Service này chịu trách nhiệm quản lý toàn bộ vòng đời của đơn đăng ký tham gia CLB:
- * - Đăng ký tham gia CLB (mua gói membership) - Student
- * - Xem danh sách đơn đăng ký của mình - Student
- * - Xem chi tiết 1 đơn đăng ký - Student/Leader
- * - Hủy đăng ký (khi còn ở trạng thái ChoDuyet) - Student
- * - Rời khỏi CLB (khi đã là thành viên) - Student (trừ ChuTich)
- * - Gia hạn membership (khi hết hạn) - Student
- * 
- * Quy trình đăng ký tham gia CLB:
- * 1. Student chọn gói membership → joinClub() → Tạo đơn với status = ChoDuyet
- * 2. Leader duyệt đơn → approveRegistration() (LeaderRegisterService) → status = DaDuyet
- * 3. Student thanh toán → confirmPayment() → isPaid = true, startDate/endDate được set
- * 4. Khi hết hạn → Tự động update status = HetHan (lazy evaluation)
- * 5. Student có thể gia hạn → renewMembership() → Tạo đơn mới
- * 
- * Business rules quan trọng:
- * - Một user chỉ có thể là thành viên của 1 CLB tại một thời điểm (khi tạo đơn thành lập CLB)
- * - ChuTich không thể rời CLB (phải chuyển quyền trước)
- * - Chỉ được gia hạn khi status = HetHan
- * - Có thể tái gia nhập sau khi status = TuChoi, DaRoiCLB, hoặc HetHan
- * 
- * @Service - Đánh dấu đây là một Spring Service, được quản lý bởi Spring Container
- * @RequiredArgsConstructor - Lombok tự động tạo constructor với các field final để dependency injection
- * @FieldDefaults - Lombok: tất cả field là PRIVATE và FINAL (immutable dependencies)
- * @Slf4j - Lombok: tự động tạo logger với tên "log" để ghi log
- */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class RegisterService {
-    /**
-     * Repository để truy vấn và thao tác với bảng Registers trong database
-     * Chứa thông tin đăng ký tham gia CLB của các user
-     */
     RegisterRepository registerRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Memberships trong database
-     * Chứa các gói membership của các CLB
-     */
     MembershipRepository membershipRepository;
-    
-    /**
-     * Repository để truy vấn và thao tác với bảng Users trong database
-     * Dùng để lấy thông tin user hiện tại
-     */
     UserRepository userRepository;
-    
-    /**
-     * Mapper để chuyển đổi giữa Entity (Registers) và DTO (RegisterResponse)
-     */
     RegisterMapper registerMapper;
 
     /**
-     * Helper method: Lấy user hiện tại từ Security Context (JWT token)
-     * 
-     * Phương thức này được dùng bởi các method khác trong service để:
-     * - Xác định user đang thực hiện request
-     * - Đảm bảo user chỉ có thể thao tác với đơn đăng ký của chính mình (trừ Leader)
-     * 
-     * @return Users - Entity user hiện tại
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user
-     * 
-     * Lưu ý: Method này chỉ hoạt động khi user đã đăng nhập (có valid JWT token)
+     * Lấy user hiện tại từ SecurityContext
      */
     private Users getCurrentUser() {
-        // Lấy Security Context từ Spring Security
         var context = SecurityContextHolder.getContext();
-        
-        // Lấy email từ authentication (subject của JWT token)
         String email = context.getAuthentication().getName();
-        
-        // Tìm user trong database và return
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
@@ -110,47 +49,29 @@ public class RegisterService {
      * Helper: Kiểm tra và tự động cập nhật status nếu membership đã hết hạn
      * (Lazy Evaluation - chỉ check khi cần)
      * 
-     * Phương thức này được gọi khi cần kiểm tra membership có hết hạn không.
-     * Thay vì dùng scheduled job để check định kỳ, ta check khi user request data (lazy evaluation).
-     * 
-     * Logic:
-     * - Chỉ check các register có: status = DaDuyet, isPaid = true, có endDate
-     * - Nếu endDate < now → Update status thành HetHan
-     * - Ghi log chi tiết để tracking
-     * 
-     * Ưu điểm của lazy evaluation:
-     * - Không cần chạy scheduled job tốn tài nguyên
-     * - Chỉ update khi thực sự cần thiết (khi user xem data)
-     * - Đảm bảo data được update đúng lúc user cần
-     * 
-     * @param register - Register cần kiểm tra
-     * @return true nếu đã update status thành HetHan, false nếu chưa hết hạn hoặc không cần update
+     * @param register Register cần kiểm tra
+     * @return true nếu đã update status, false nếu chưa hết hạn
      */
     private boolean checkAndUpdateExpiry(Registers register) {
-        // Điều kiện để kiểm tra expiry:
-        // 1. status = DaDuyet (đã được duyệt)
-        // 2. isPaid = true (đã thanh toán)
-        // 3. có endDate (có thời hạn)
-        // 4. endDate < now (đã hết hạn)
+        // Chỉ check nếu: status = DaDuyet + đã thanh toán + có endDate
         if (register.getStatus() == JoinStatus.DaDuyet 
             && register.getIsPaid() != null && register.getIsPaid()
             && register.getEndDate() != null
             && register.getEndDate().isBefore(LocalDateTime.now())) {
             
-            // Membership đã hết hạn → Update status thành HetHan
+            // Update status thành HetHan
             register.setStatus(JoinStatus.HetHan);
             registerRepository.save(register);
             
-            // Ghi log để tracking và debugging
             log.info("Auto-updated subscription {} to HetHan. User: {}, Club: {}, EndDate: {}", 
                     register.getSubscriptionId(),
                     register.getUser().getEmail(),
                     register.getMembershipPackage().getClub().getClubName(),
                     register.getEndDate());
             
-            return true;  // Đã update
+            return true;
         }
-        return false;  // Chưa hết hạn hoặc không cần update
+        return false;
     }
 
     /**
@@ -171,34 +92,14 @@ public class RegisterService {
     }
 
     /**
-     * Đăng ký tham gia CLB (mua gói membership package)
+     * Đăng ký tham gia CLB (mua gói package)
+     * Trạng thái mặc định: ChoDuyet
      * 
-     * Phương thức này cho phép Student đăng ký tham gia một CLB bằng cách chọn gói membership.
-     * Sau khi đăng ký, đơn sẽ ở trạng thái ChoDuyet (chờ Leader duyệt).
-     * 
-     * Quy trình:
-     * 1. Student chọn gói membership từ CLB
-     * 2. Gọi joinClub() → Tạo đơn đăng ký với status = ChoDuyet
-     * 3. Leader duyệt đơn (LeaderRegisterService) → status = DaDuyet
-     * 4. Student thanh toán → isPaid = true, startDate/endDate được set
-     * 5. Student trở thành thành viên chính thức
-     * 
-     * Logic xử lý tái gia nhập (re-apply):
-     * - Nếu chưa có registration trong CLB này → Tạo mới
-     * - Nếu status = ChoDuyet → Không cho đăng ký lại (đang chờ duyệt)
-     * - Nếu status = DaDuyet + isPaid = true → Không cho đăng ký lại (đã là thành viên active)
-     * - Nếu status = TuChoi, DaRoiCLB, hoặc HetHan → CHO PHÉP đăng ký lại (xóa đơn cũ, tạo mới)
-     * 
-     * @param request - DTO chứa packageId (ID gói membership) và joinReason (lý do tham gia)
-     * @return RegisterResponse - Thông tin đơn đăng ký đã được tạo (với status = ChoDuyet)
-     * @throws AppException với ErrorCode.PACKAGE_NOT_FOUND nếu không tìm thấy gói
-     * @throws AppException với ErrorCode.PACKAGE_NOT_ACTIVE nếu gói không active
-     * @throws AppException với ErrorCode.ALREADY_REGISTERED nếu đang chờ duyệt
-     * @throws AppException với ErrorCode.ALREADY_MEMBER nếu đã là thành viên active
-     * 
-     * Lưu ý:
-     * - User chỉ có thể đăng ký khi đã đăng nhập (xác định từ JWT token)
-     * - Đơn mới tạo sẽ có status = ChoDuyet, cần Leader duyệt
+     * Logic tái gia nhập:
+     * - Nếu chưa có registration -> Tạo mới
+     * - Nếu status = ChoDuyet -> Không cho đăng ký lại (đang chờ duyệt)
+     * - Nếu status = DaDuyet + isPaid -> Không cho đăng ký lại (đã là thành viên)
+     * - Nếu status = TuChoi hoặc DaRoiCLB -> CHO PHÉP đăng ký lại (tạo mới)
      */
     public RegisterResponse joinClub(JoinClubRequest request) {
         Users currentUser = getCurrentUser();
@@ -263,21 +164,8 @@ public class RegisterService {
     }
 
     /**
-     * Xem danh sách các đơn đăng ký tham gia CLB của user hiện tại
-     * 
-     * Phương thức này cho phép Student xem tất cả các đơn đăng ký tham gia CLB của mình,
-     * bao gồm các trạng thái: ChoDuyet, DaDuyet, TuChoi, DaRoiCLB, HetHan.
-     * 
-     * Tính năng đặc biệt:
-     * - Tự động kiểm tra và cập nhật status membership hết hạn (lazy evaluation)
-     * - Hiển thị đầy đủ thông tin về CLB, gói membership, trạng thái, ngày tham gia...
-     * 
-     * @return List<RegisterResponse> - Danh sách đơn đăng ký đã được map sang DTO
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user (từ getCurrentUser)
-     * 
-     * Lưu ý:
-     * - Chỉ trả về đơn của chính user hiện tại (xác định từ JWT token)
-     * - Tự động update status = HetHan nếu membership đã hết hạn (trước khi trả về)
+     * Xem danh sách các CLB mình đã đăng ký và trạng thái
+     * Tự động kiểm tra và cập nhật status nếu có membership hết hạn
      */
     public List<RegisterResponse> getMyRegistrations() {
         Users currentUser = getCurrentUser();
@@ -290,25 +178,11 @@ public class RegisterService {
     }
 
     /**
-     * Xem chi tiết một đơn đăng ký cụ thể
-     * 
-     * Phương thức này cho phép:
-     * 1. Student xem chi tiết đơn đăng ký của chính mình
-     * 2. Leader (ChuTich, PhoChuTich) của CLB xem đơn đăng ký trong CLB của họ
-     * 
-     * Authorization logic:
-     * - Nếu user là owner của đơn (user tạo đơn) → Cho phép
-     * - Nếu user là Leader của CLB chứa đơn này → Cho phép
-     * - Nếu không thỏa mãn cả hai điều kiện trên → Throw UNAUTHORIZED
-     * 
-     * Tính năng đặc biệt:
-     * - Tự động kiểm tra và cập nhật status membership hết hạn (lazy evaluation)
-     * 
-     * @param subscriptionId - ID của đơn đăng ký cần xem chi tiết
-     * @return RegisterResponse - Thông tin chi tiết đơn đăng ký đã được map sang DTO
-     * @throws AppException với ErrorCode.REGISTER_NOT_FOUND nếu không tìm thấy đơn
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user (từ getCurrentUser)
-     * @throws AppException với ErrorCode.UNAUTHORIZED nếu user không có quyền xem đơn này
+     * Xem chi tiết 1 đăng ký
+     * Cho phép:
+     * 1. User xem đăng ký của chính mình
+     * 2. Leader (ChuTich, PhoChuTich) của CLB xem đăng ký trong CLB của họ
+     * Tự động kiểm tra và cập nhật status nếu membership hết hạn
      */
     public RegisterResponse getRegistrationById(Integer subscriptionId) {
         Users currentUser = getCurrentUser();
@@ -338,22 +212,7 @@ public class RegisterService {
     }
 
     /**
-     * Hủy đơn đăng ký (chỉ khi trạng thái còn ChoDuyet)
-     * 
-     * Phương thức này cho phép Student hủy đơn đăng ký của mình khi:
-     * - Đơn còn ở trạng thái ChoDuyet (chờ duyệt)
-     * - User là owner của đơn (chỉ có thể hủy đơn của chính mình)
-     * 
-     * Business rules:
-     * - Chỉ được hủy khi status = ChoDuyet (chưa được duyệt)
-     * - Không thể hủy khi đã được duyệt (status = DaDuyet) → Phải dùng leaveClub() nếu muốn rời CLB
-     * - Sau khi hủy, đơn sẽ bị xóa khỏi database (hard delete)
-     * 
-     * @param subscriptionId - ID của đơn đăng ký cần hủy
-     * @throws AppException với ErrorCode.REGISTER_NOT_FOUND nếu không tìm thấy đơn
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user (từ getCurrentUser)
-     * @throws AppException với ErrorCode.UNAUTHORIZED nếu user không phải owner của đơn
-     * @throws AppException với ErrorCode.INVALID_APPLICATION_STATUS nếu status không phải ChoDuyet
+     * Hủy đăng ký (chỉ khi trạng thái còn ChoDuyet)
      */
     public void cancelRegistration(Integer subscriptionId) {
         Users currentUser = getCurrentUser();
@@ -377,22 +236,7 @@ public class RegisterService {
 
     /**
      * Rời khỏi CLB (chỉ dành cho sinh viên, không dành cho ChuTich)
-     * 
-     * Phương thức này cho phép Student rời khỏi CLB mà họ đang là thành viên.
-     * 
-     * Business rules:
-     * - Chỉ được rời khi đang là thành viên active (status = DaDuyet, isPaid = true)
-     * - ChuTich (Chủ tịch) không thể rời CLB → Phải chuyển quyền trước (throw PRESIDENT_CANNOT_LEAVE)
-     * - Sau khi rời, status sẽ được set thành DaRoiCLB (đã rời CLB)
-     * - Đơn đăng ký vẫn được giữ lại trong database (không xóa) để lưu lịch sử
-     * 
-     * @param clubId - ID của CLB muốn rời
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user (từ getCurrentUser)
-     * @throws AppException với ErrorCode.PRESIDENT_CANNOT_LEAVE nếu user là ChuTich
-     * @throws AppException với ErrorCode.NOT_CLUB_MEMBER nếu không tìm thấy đơn đăng ký trong CLB
-     * @throws AppException với ErrorCode.NOT_ACTIVE_MEMBER nếu không phải thành viên active
-     * 
-     * Lưu ý: Khác với cancelRegistration() (hủy đơn chờ duyệt), leaveClub() dùng cho thành viên đã active
+     * @param clubId ID của CLB muốn rời
      */
     public void leaveClub(Integer clubId) {
         Users currentUser = getCurrentUser();
@@ -420,42 +264,10 @@ public class RegisterService {
     }
 
     /**
-     * Gia hạn membership (renew subscription)
-     * 
-     * Phương thức này cho phép Student gia hạn membership khi đã hết hạn.
-     * Có thể gia hạn với gói hiện tại hoặc đổi sang gói khác (nâng cấp/hạ cấp).
-     * 
-     * Quy trình gia hạn:
-     * 1. Student chọn đơn đăng ký đã hết hạn (status = HetHan)
-     * 2. Chọn gói membership (có thể giữ gói cũ hoặc đổi gói mới)
-     * 3. Gọi renewMembership() → Update đơn với status = ChoDuyet (chờ thanh toán)
-     * 4. Student thanh toán → isPaid = true, startDate/endDate được update
-     * 5. Membership được gia hạn thành công
-     * 
-     * Business rules:
-     * - Chỉ được gia hạn khi status = HetHan (đã hết hạn)
-     * - User phải là owner của đơn đăng ký (chỉ có thể gia hạn đơn của chính mình)
-     * - Nếu đổi gói, gói mới phải cùng CLB với gói cũ
-     * - Nếu đổi gói, gói mới phải active (isActive = true)
-     * - Sau khi gia hạn, đơn sẽ có status = ChoDuyet, cần thanh toán lại
-     * 
-     * @param subscriptionId - ID của đơn đăng ký cần gia hạn
-     * @param request - DTO chứa packageId (optional):
-     *                - null = gia hạn với gói hiện tại
-     *                - có giá trị = đổi sang gói mới (nâng cấp/hạ cấp)
-     * @return RegisterResponse - Thông tin đơn sau khi được gia hạn (với status = ChoDuyet, chờ thanh toán)
-     * @throws AppException với ErrorCode.REGISTER_NOT_FOUND nếu không tìm thấy đơn
-     * @throws AppException với ErrorCode.USER_NOT_FOUND nếu không tìm thấy user (từ getCurrentUser)
-     * @throws AppException với ErrorCode.UNAUTHORIZED nếu user không phải owner của đơn
-     * @throws AppException với ErrorCode.CANNOT_RENEW_SUBSCRIPTION nếu status không phải HetHan
-     * @throws AppException với ErrorCode.PACKAGE_NOT_FOUND nếu không tìm thấy gói mới (khi đổi gói)
-     * @throws AppException với ErrorCode.PACKAGE_NOT_ACTIVE nếu gói mới không active
-     * @throws AppException với ErrorCode.INVALID_REQUEST nếu gói mới không cùng CLB
-     * 
-     * Lưu ý:
-     * - Đơn đăng ký không bị xóa, chỉ được update (giữ lại lịch sử)
-     * - Các field PayOS sẽ được reset để tạo payment link mới
-     * - startDate và endDate cũ được giữ nguyên, sẽ được update sau khi thanh toán thành công
+     * Gia hạn membership
+     * @param subscriptionId ID của đăng ký cần gia hạn
+     * @param request packageId (optional): null = gia hạn gói hiện tại, có giá trị = đổi gói
+     * @return RegisterResponse với trạng thái ChoDuyet (chờ thanh toán)
      */
     public RegisterResponse renewMembership(Integer subscriptionId, RenewMembershipRequest request) {
         Users currentUser = getCurrentUser();
