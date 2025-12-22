@@ -4,7 +4,9 @@ import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.ClubRoleType;
 import com.swp391.clubmanagement.enums.JoinStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -77,6 +79,11 @@ public interface RegisterRepository extends JpaRepository<Registers, Integer> {
     
     /** Tìm đơn đăng ký theo PayOS order code (dùng để xử lý webhook thanh toán) */
     Optional<Registers> findByPayosOrderCode(Long orderCode);
+    
+    /** Tìm đơn đăng ký theo ID với pessimistic lock (dùng để tránh race condition khi tạo payment link) */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Registers r WHERE r.subscriptionId = :subscriptionId")
+    Optional<Registers> findByIdWithLock(@Param("subscriptionId") Integer subscriptionId);
     
     // ============ THỐNG KÊ ============
     
