@@ -25,36 +25,123 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * PayOSService - Service xử lý tích hợp với PayOS payment gateway
+ * 
+ * Service này chịu trách nhiệm tương tác với PayOS API để:
+ * - Tạo payment link (link thanh toán) cho user
+ * - Verify webhook signature để đảm bảo request đến từ PayOS
+ * 
+ * PayOS là một payment gateway phổ biến tại Việt Nam, cho phép thanh toán online
+ * qua nhiều phương thức: thẻ ngân hàng, ví điện tử, QR code...
+ * 
+ * Quy trình tích hợp PayOS:
+ * 1. Tạo payment link → PayOS trả về paymentLinkId và paymentUrl
+ * 2. User click vào paymentUrl → Thanh toán trên PayOS
+ * 3. PayOS gửi webhook về server → Verify signature → Xử lý thanh toán
+ * 
+ * Security:
+ * - Sử dụng checksum key để verify webhook signature (đảm bảo request từ PayOS)
+ * - Sử dụng client-id và api-key để authenticate với PayOS API
+ * 
+ * @Service - Đánh dấu đây là một Spring Service, được quản lý bởi Spring Container
+ * @RequiredArgsConstructor - Lombok tự động tạo constructor với các field final để dependency injection
+ * @FieldDefaults - Lombok: tất cả field là PRIVATE và FINAL (immutable dependencies)
+ * @Slf4j - Lombok: tự động tạo logger với tên "log" để ghi log
+ */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class PayOSService {
-    
+    /**
+     * RestTemplate để gọi PayOS REST API
+     * Được khởi tạo mới, không dùng bean (có thể inject nếu cần config thêm)
+     */
     RestTemplate restTemplate = new RestTemplate();
     
+    /**
+     * Client ID của PayOS account
+     * Được inject từ application.yaml qua @Value annotation
+     * 
+     * @NonFinal - Field này không phải final vì cần có thể inject giá trị từ config
+     */
     @NonFinal
     @Value("${payos.client-id}")
     String clientId;
     
+    /**
+     * API Key để authenticate với PayOS API
+     * Được inject từ application.yaml qua @Value annotation
+     * Phải giữ bí mật, không được commit vào git (nên dùng application-secret.yaml)
+     * 
+     * @NonFinal - Field này không phải final vì cần có thể inject giá trị từ config
+     */
     @NonFinal
     @Value("${payos.api-key}")
     String apiKey;
     
+    /**
+     * Checksum Key để verify webhook signature
+     * Được inject từ application.yaml qua @Value annotation
+     * Dùng để verify các webhook request từ PayOS (đảm bảo request hợp lệ)
+     * Phải giữ bí mật, không được commit vào git (nên dùng application-secret.yaml)
+     * 
+     * @NonFinal - Field này không phải final vì cần có thể inject giá trị từ config
+     */
     @NonFinal
     @Value("${payos.checksum-key}")
     String checksumKey;
     
+    /**
+     * PayOS API base URL
+     * Được inject từ application.yaml qua @Value annotation
+     * Ví dụ: "https://api.payos.vn"
+     * 
+     * @NonFinal - Field này không phải final vì cần có thể inject giá trị từ config
+     */
     @NonFinal
     @Value("${payos.api-url}")
     String apiUrl;
     
+    /**
+     * Base URL của ứng dụng (để tạo returnUrl và cancelUrl cho payment link)
+     * Được inject từ application.yaml qua @Value annotation
+     * Ví dụ: "https://clubmanage.azurewebsites.net/api"
+     * 
+     * @NonFinal - Field này không phải final vì cần có thể inject giá trị từ config
+     */
     @NonFinal
     @Value("${app.base-url}")
     String baseUrl;
 
     /**
-     * Tạo payment link từ PayOS
+     * Tạo payment link từ PayOS API
+     * 
+     * Phương thức này gọi PayOS API để tạo một payment link.
+     * Payment link này sẽ được gửi cho user để họ click vào và thanh toán.
+     * 
+     * Quy trình:
+     * 1. Validate request (orderCode, amount, description phải hợp lệ)
+     * 2. Tạo signature từ data string (để PayOS verify)
+     * 3. Gọi PayOS API với headers (client-id, api-key) và body (request + signature)
+     * 4. PayOS trả về paymentLinkId và paymentUrl
+     * 5. Return response cho caller
+     * 
+     * Request validation:
+     * - orderCode: Phải là số dương (positive number)
+     * - amount: Phải là số dương (tính bằng VNĐ)
+     * - description: Phải có giá trị (không null, không empty)
+     * 
+     * @param request - DTO chứa thông tin payment: orderCode, amount, description, returnUrl, cancelUrl
+     * @return PayOSPaymentLinkResponse - Response từ PayOS chứa paymentLinkId và paymentUrl
+     * @throws AppException với ErrorCode.INVALID_REQUEST nếu request không hợp lệ
+     * @throws AppException với ErrorCode.PAYMENT_LINK_CREATION_FAILED nếu PayOS API trả về lỗi
+     * 
+     * Lưu ý:
+     * - Signature được tạo từ data string và checksum key (HMAC SHA256)
+     * - PayOS sẽ verify signature để đảm bảo request hợp lệ
+     * - Response code "00" nghĩa là thành công, các code khác là lỗi
      */
     public PayOSPaymentLinkResponse createPaymentLink(PayOSCreatePaymentRequest request) {
         try {
@@ -172,6 +259,14 @@ public class PayOSService {
 
     /**
      * Xác thực webhook từ PayOS (wrapper method)
+     * 
+     * Phương thức này là wrapper method để verify webhook signature từ PayOSWebhookData object.
+     * Extract các field từ object và gọi method verifyWebhookSignature() với parameters riêng lẻ.
+     * 
+     * @param webhookData - PayOSWebhookData object chứa code, desc, data, và signature
+     * @return boolean - true nếu signature hợp lệ, false nếu không hợp lệ hoặc data null
+     * 
+     * Lưu ý: Method này chỉ là convenience wrapper, logic thực sự ở verifyWebhookSignature() với parameters riêng lẻ
      */
     public boolean verifyWebhookSignature(PayOSWebhookData webhookData) {
         if (webhookData == null || webhookData.getData() == null) {
@@ -187,9 +282,33 @@ public class PayOSService {
 
 
     /**
-     * Verify webhook signature
-     * PayOS webhook signature được tạo từ: amount, orderCode, description
-     * Theo tài liệu PayOS, signature được tính từ data object
+     * Verify webhook signature từ PayOS
+     * 
+     * Phương thức này verify chữ ký (signature) của webhook request từ PayOS
+     * để đảm bảo request thực sự đến từ PayOS và không bị giả mạo.
+     * 
+     * Quy trình verify:
+     * 1. Tạo data string từ các field: amount, orderCode, description (format: "amount=X&description=Y&orderCode=Z")
+     * 2. Tạo signature từ data string bằng HMAC SHA256 với checksumKey
+     * 3. So sánh signature tính được với signature từ PayOS
+     * 4. Nếu khớp → Request hợp lệ, return true
+     * 5. Nếu không khớp → Request không hợp lệ (có thể bị giả mạo), return false
+     * 
+     * Security importance:
+     * - Đây là bước bảo mật quan trọng, phải verify signature trước khi xử lý webhook
+     * - Không verify signature có thể dẫn đến xử lý thanh toán giả mạo
+     * - PayOS sẽ gửi signature trong header hoặc body của webhook request
+     * 
+     * @param code - Code từ PayOS webhook (thường là "00" nếu thành công)
+     * @param desc - Description từ PayOS webhook
+     * @param data - WebhookData object chứa amount, orderCode, description
+     * @param signature - Signature từ PayOS để verify
+     * @return boolean - true nếu signature hợp lệ (request từ PayOS), false nếu không hợp lệ
+     * 
+     * Lưu ý:
+     * - Signature được tính bằng HMAC SHA256 với checksumKey
+     * - So sánh case-insensitive (equalsIgnoreCase)
+     * - Nếu data hoặc signature null/empty, return false ngay
      */
     public boolean verifyWebhookSignature(String code, String desc, PayOSWebhookData.WebhookData data, String signature) {
         try {
@@ -238,7 +357,15 @@ public class PayOSService {
     }
 
     /**
-     * Convert bytes to hex string
+     * Convert mảng bytes sang hex string
+     * 
+     * Helper method để chuyển đổi mảng bytes (từ HMAC hash) sang chuỗi hex string.
+     * Được dùng trong createSignature() và verifyWebhookSignature().
+     * 
+     * Ví dụ: [0x48, 0x65, 0x6c] → "48656c"
+     * 
+     * @param bytes - Mảng bytes cần chuyển đổi (thường là kết quả từ HMAC hash)
+     * @return String - Hex string representation của bytes array
      */
     private String bytesToHex(byte[] bytes) {
         StringBuilder result = new StringBuilder();
@@ -248,6 +375,26 @@ public class PayOSService {
         return result.toString();
     }
 
+    /**
+     * Tạo signature từ data string bằng HMAC SHA256
+     * 
+     * Helper method để tạo signature cho PayOS API request.
+     * Signature được tạo bằng cách:
+     * 1. Lấy data string (format: "amount=X&cancelUrl=Y&description=Z&orderCode=W&returnUrl=V")
+     * 2. Hash bằng HMAC SHA256 với checksumKey
+     * 3. Convert bytes sang hex string
+     * 
+     * Signature này được gửi kèm trong request để PayOS verify tính hợp lệ của request.
+     * 
+     * @param dataStr - Data string cần tạo signature (format URL-encoded query string)
+     * @return String - Signature dạng hex string
+     * @throws RuntimeException - Nếu có lỗi khi tạo signature (NoSuchAlgorithmException, InvalidKeyException)
+     * 
+     * Lưu ý:
+     * - Sử dụng checksumKey (secret key) để tạo HMAC
+     * - Algorithm: HMAC SHA256 (theo chuẩn PayOS)
+     * - Kết quả là hex string (lowercase)
+     */
     private String createSignature(String dataStr) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -265,7 +412,29 @@ public class PayOSService {
 
     /**
      * Confirm webhook URL với PayOS
-     * PayOS sẽ gửi GET request đến webhookUrl để verify
+     * 
+     * Phương thức này đăng ký webhook URL với PayOS để PayOS biết gửi webhook đến đâu.
+     * Sau khi confirm, PayOS sẽ gửi webhook đến URL này mỗi khi có sự kiện thanh toán.
+     * 
+     * Quy trình:
+     * 1. Gọi PayOS API endpoint: /confirm-webhook
+     * 2. Gửi webhookUrl cần đăng ký
+     * 3. PayOS sẽ gửi GET request đến webhookUrl để verify URL có hoạt động không
+     * 4. Nếu verify thành công, PayOS sẽ lưu webhookUrl và gửi webhook đến đây
+     * 
+     * Use cases:
+     * - Đăng ký webhook URL khi deploy ứng dụng lần đầu
+     * - Thay đổi webhook URL khi migrate server
+     * - Re-confirm webhook URL nếu bị mất
+     * 
+     * @param webhookUrl - URL mà PayOS sẽ gửi webhook đến (ví dụ: "https://your-domain.com/api/payments/webhook")
+     * @return ConfirmWebhookResponse - Response từ PayOS xác nhận đã đăng ký thành công
+     * @throws AppException với ErrorCode.INVALID_REQUEST nếu PayOS trả về lỗi hoặc không thể confirm
+     * 
+     * Lưu ý:
+     * - Webhook URL phải là public URL (không thể là localhost)
+     * - PayOS sẽ gửi GET request đến URL này để verify
+     * - Response code "00" nghĩa là thành công
      */
     public ConfirmWebhookResponse confirmWebhook(String webhookUrl) {
         try {
