@@ -15,8 +15,8 @@ import com.swp391.clubmanagement.exception.AppException;
 import com.swp391.clubmanagement.exception.ErrorCode;
 import com.swp391.clubmanagement.repository.RegisterRepository;
 import com.swp391.clubmanagement.repository.UserRepository;
-import com.swp391.clubmanagement.service.PayOSService;
 import com.swp391.clubmanagement.service.PaymentHistoryService;
+import com.swp391.clubmanagement.service.PayOSService;
 import com.swp391.clubmanagement.utils.DateTimeUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +31,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @RestController
@@ -63,25 +64,17 @@ public class PayOSController {
     /**
      * POST /api/payments/create-link
      * Tạo payment link cho đăng ký CLB
-     * 
-     * Logic:
-     * - Nếu đã có payment link đang pending (có payosOrderCode nhưng chưa thanh toán) -> trả về link đó
-     * - Nếu chưa có -> tạo payment link mới
-     * - Sử dụng pessimistic locking để tránh race condition khi tạo đồng thời
      */
     @PostMapping("/create-link")
     @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
     @Operation(summary = "Tạo payment link", 
-               description = "Tạo link thanh toán PayOS cho đăng ký CLB. Nếu đã có payment link đang pending, trả về link đó.")
-    @org.springframework.transaction.annotation.Transactional
+               description = "Tạo link thanh toán PayOS cho đăng ký CLB")
     public ApiResponse<PaymentLinkResponse> createPaymentLink(@Valid @RequestBody CreatePaymentLinkRequest request) {
         // Lấy user hiện tại
         Users currentUser = getCurrentUser();
         
-        // Lấy thông tin đăng ký với pessimistic lock để tránh race condition
-        // Lock sẽ được giữ cho đến khi transaction kết thúc
-        // Điều này đảm bảo chỉ một request có thể tạo payment link tại một thời điểm
-        Registers register = registerRepository.findByIdWithLock(request.getSubscriptionId())
+        // Lấy thông tin đăng ký
+        Registers register = registerRepository.findById(request.getSubscriptionId())
                 .orElseThrow(() -> new AppException(ErrorCode.REGISTER_NOT_FOUND));
         
         // Kiểm tra quyền: chỉ user sở hữu register mới được tạo payment link
@@ -103,25 +96,6 @@ public class PayOSController {
         if (register.getMembershipPackage().getPrice() == null || 
             register.getMembershipPackage().getPrice().compareTo(java.math.BigDecimal.ZERO) <= 0) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-        
-        // QUAN TRỌNG: Kiểm tra xem đã có payment link đang pending chưa
-        // Nếu đã có payosOrderCode và payosPaymentLinkId nhưng chưa thanh toán -> trả về link đó
-        if (register.getPayosOrderCode() != null && register.getPayosPaymentLinkId() != null) {
-            log.info("Payment link already exists for subscriptionId: {}, orderCode: {}, paymentLinkId: {}. Returning existing link.",
-                    register.getSubscriptionId(), register.getPayosOrderCode(), register.getPayosPaymentLinkId());
-            
-            // Trả về payment link đã tồn tại
-            PaymentLinkResponse response = PaymentLinkResponse.builder()
-                    .paymentLink("https://pay.payos.vn/web/" + register.getPayosPaymentLinkId())
-                    .orderCode(register.getPayosOrderCode())
-                    .paymentLinkId(register.getPayosPaymentLinkId())
-                    .build();
-            
-            return ApiResponse.<PaymentLinkResponse>builder()
-                    .result(response)
-                    .message("Đã có payment link đang chờ thanh toán. Vui lòng sử dụng link này để thanh toán.")
-                    .build();
         }
         
         // Tạo order code từ subscription ID (đảm bảo unique)
@@ -274,14 +248,10 @@ public class PayOSController {
      * Webhook endpoint để nhận callback từ PayOS
      * GET: PayOS dùng để verify webhook URL khi save
      * POST: PayOS gửi thông tin thanh toán thực tế
-     * 
-     * Sử dụng @Transactional để đảm bảo thay đổi được commit vào database
-     * và pessimistic lock hoạt động đúng cách
      */
     @RequestMapping(value = "/webhook", method = {RequestMethod.POST, RequestMethod.GET})
     @Operation(summary = "PayOS Webhook", 
                description = "Endpoint nhận callback từ PayOS khi thanh toán thành công (POST) hoặc verify (GET)")
-    @org.springframework.transaction.annotation.Transactional
     public ApiResponse<String> handleWebhook(@RequestBody(required = false) PayOSWebhookData webhookData) {
         log.info("=== WEBHOOK RECEIVED ===");
         
@@ -344,33 +314,21 @@ public class PayOSController {
                         .build();
             }
             
-            // Tìm register theo orderCode với pessimistic lock để tránh xử lý trùng lặp
-            // Lock đảm bảo chỉ một webhook request có thể xử lý thanh toán tại một thời điểm
+            // Tìm register theo orderCode
             log.info("Looking for register with orderCode: {}", orderCode);
             
-            Registers registerFound = registerRepository.findByPayosOrderCode(orderCode)
+            Registers register = registerRepository.findByPayosOrderCode(orderCode)
                     .orElseThrow(() -> {
                         log.error("Register not found for orderCode: {}", orderCode);
-                        return new AppException(ErrorCode.PAYMENT_NOT_FOUND);
-                    });
-            
-            // Lưu subscriptionId trước khi lock
-            Integer subscriptionId = registerFound.getSubscriptionId();
-            
-            // Lock register để tránh race condition khi xử lý webhook đồng thời
-            // Reload với lock để đảm bảo dữ liệu mới nhất
-            Registers register = registerRepository.findByIdWithLock(subscriptionId)
-                    .orElseThrow(() -> {
-                        log.error("Register not found after lock for subscriptionId: {}", subscriptionId);
                         return new AppException(ErrorCode.PAYMENT_NOT_FOUND);
                     });
             
             log.info("Found register: subscriptionId={}, isPaid={}", 
                     register.getSubscriptionId(), register.getIsPaid());
             
-            // Kiểm tra đã thanh toán chưa (double-check sau khi lock)
+            // Kiểm tra đã thanh toán chưa
             if (Boolean.TRUE.equals(register.getIsPaid())) {
-                log.warn("Payment already processed for orderCode: {}. This is a duplicate webhook call.", orderCode);
+                log.warn("Payment already processed for orderCode: {}", orderCode);
                 return ApiResponse.<String>builder()
                         .result("Payment already processed")
                         .message("Giao dịch đã được xử lý trước đó")
@@ -405,22 +363,14 @@ public class PayOSController {
             LocalDateTime endDate = calculateEndDate(startDate, term);
             register.setEndDate(endDate);
             
-            // Save và flush để đảm bảo thay đổi được commit ngay lập tức
-            register = registerRepository.save(register);
-            registerRepository.flush(); // Force flush to database
+            registerRepository.save(register);
             
-            // Tạo payment history record để lưu lịch sử giao dịch
-            try {
-                paymentHistoryService.createPaymentHistory(register);
-                log.info("Payment history record created for subscriptionId: {}", register.getSubscriptionId());
-            } catch (Exception e) {
-                // Log lỗi nhưng không throw để không ảnh hưởng đến quá trình thanh toán
-                log.error("Failed to create payment history record for subscriptionId: {}", 
-                        register.getSubscriptionId(), e);
-            }
+            log.info("✅ Payment processed successfully for subscriptionId: {}, orderCode: {}, membership valid until: {}", 
+                    register.getSubscriptionId(), orderCode, endDate);
             
-            log.info("✅ Payment processed successfully for subscriptionId: {}, orderCode: {}, isPaid: {}, membership valid until: {}", 
-                    register.getSubscriptionId(), orderCode, register.getIsPaid(), endDate);
+            // Tạo payment history record
+            paymentHistoryService.createPaymentHistory(register);
+            log.info("Payment history created for subscriptionId: {}", register.getSubscriptionId());
             
             return ApiResponse.<String>builder()
                     .result("Payment processed successfully")

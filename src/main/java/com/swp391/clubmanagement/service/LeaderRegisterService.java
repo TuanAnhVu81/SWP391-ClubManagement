@@ -37,6 +37,7 @@ public class LeaderRegisterService {
     UserRepository userRepository;
     RegisterMapper registerMapper;
     RoleRepository roleRepository;
+    PaymentHistoryService paymentHistoryService;
 
     // Các vai trò được phép duyệt đơn
     private static final List<ClubRoleType> LEADER_ROLES = List.of(
@@ -171,6 +172,10 @@ public class LeaderRegisterService {
         registerRepository.save(register);
         log.info("Payment confirmed for registration {} by Leader {}. Membership valid until: {}", 
                 request.getSubscriptionId(), currentUser.getEmail(), endDate);
+
+        // Tạo payment history record
+        paymentHistoryService.createPaymentHistory(register);
+        log.info("Payment history created for registration {}", request.getSubscriptionId());
 
         return registerMapper.toRegisterResponse(register);
     }
