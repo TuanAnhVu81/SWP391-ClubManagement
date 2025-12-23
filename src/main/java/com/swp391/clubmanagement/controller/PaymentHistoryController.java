@@ -3,6 +3,7 @@ package com.swp391.clubmanagement.controller;
 import com.swp391.clubmanagement.dto.response.ApiResponse;
 import com.swp391.clubmanagement.dto.response.PaymentHistoryResponse;
 import com.swp391.clubmanagement.dto.response.RevenueResponse;
+import com.swp391.clubmanagement.dto.response.RevenueByMonthWithClubsResponse;
 import com.swp391.clubmanagement.service.PaymentHistoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -128,19 +129,19 @@ public class PaymentHistoryController {
     
     /**
      * GET /api/payment-history/revenue/by-month/date-range
-     * Tính doanh thu theo tháng
+     * Tính doanh thu theo tháng kèm danh sách doanh thu từng CLB
      */
     @GetMapping("/revenue/by-month/date-range")
     @PreAuthorize("hasAuthority('SCOPE_QuanTriVien')")
-    @Operation(summary = "Tính doanh thu theo tháng", 
-               description = "Tính doanh thu theo từng tháng trong khoảng thời gian (Admin only)")
-    public ApiResponse<List<RevenueResponse>> getRevenueByMonth(
+    @Operation(summary = "Tính doanh thu theo tháng kèm danh sách doanh thu từng CLB", 
+               description = "Tính doanh thu theo từng tháng trong khoảng thời gian, bao gồm danh sách doanh thu từng CLB và tổng doanh thu (Admin only)")
+    public ApiResponse<List<RevenueByMonthWithClubsResponse>> getRevenueByMonth(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         
-        List<RevenueResponse> result = paymentHistoryService.calculateRevenueByMonth(startDate, endDate);
+        List<RevenueByMonthWithClubsResponse> result = paymentHistoryService.calculateRevenueByMonthWithClubs(startDate, endDate);
         
-        return ApiResponse.<List<RevenueResponse>>builder()
+        return ApiResponse.<List<RevenueByMonthWithClubsResponse>>builder()
                 .result(result)
                 .message("Tính doanh thu thành công")
                 .build();
