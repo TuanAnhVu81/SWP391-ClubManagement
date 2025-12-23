@@ -2,6 +2,7 @@ package com.swp391.clubmanagement.service;
 
 import com.swp391.clubmanagement.dto.response.PaymentHistoryResponse;
 import com.swp391.clubmanagement.dto.response.RevenueResponse;
+import com.swp391.clubmanagement.dto.response.RevenueByMonthWithClubsResponse;
 import com.swp391.clubmanagement.entity.Clubs;
 import com.swp391.clubmanagement.entity.PaymentHistory;
 import com.swp391.clubmanagement.entity.Registers;
@@ -23,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -125,8 +126,6 @@ public class PaymentHistoryService {
                 clubId, startDate, adjustedEndDate);
         
         return results.stream().map(result -> {
-            Integer year = ((Number) result[0]).intValue();
-            Integer month = ((Number) result[1]).intValue();
             BigDecimal totalRevenue = (BigDecimal) result[2];
             Long transactionCount = ((Number) result[3]).longValue();
             
@@ -142,7 +141,7 @@ public class PaymentHistoryService {
     }
     
     /**
-     * Tính doanh thu theo tháng
+     * Tính doanh thu theo tháng (giữ nguyên để tương thích với các API khác)
      */
     public List<RevenueResponse> calculateRevenueByMonth(
             LocalDateTime startDate, LocalDateTime endDate) {
@@ -152,8 +151,6 @@ public class PaymentHistoryService {
         List<Object[]> results = paymentHistoryRepository.calculateRevenueByMonth(startDate, adjustedEndDate);
         
         return results.stream().map(result -> {
-            Integer year = ((Number) result[0]).intValue();
-            Integer month = ((Number) result[1]).intValue();
             BigDecimal totalRevenue = (BigDecimal) result[2];
             Long transactionCount = ((Number) result[3]).longValue();
             
@@ -164,6 +161,72 @@ public class PaymentHistoryService {
                     .endDate(endDate)
                     .build();
         }).collect(Collectors.toList());
+    }
+    
+    /**
+     * Tính doanh thu theo tháng kèm danh sách doanh thu từng CLB
+     */
+    public List<RevenueByMonthWithClubsResponse> calculateRevenueByMonthWithClubs(
+            LocalDateTime startDate, LocalDateTime endDate) {
+        // Điều chỉnh endDate thành cuối ngày để tính đủ cả ngày hôm đó
+        LocalDateTime adjustedEndDate = endDate.toLocalDate().atTime(23, 59, 59, 999999999);
+        
+        // Lấy dữ liệu doanh thu theo CLB và tháng
+        List<Object[]> results = paymentHistoryRepository.calculateRevenueByClubAndMonth(
+                startDate, adjustedEndDate);
+        
+        // Group by month (year, month) để tính tổng và danh sách CLB
+        Map<String, RevenueByMonthWithClubsResponse> monthMap = new LinkedHashMap<>();
+        
+        for (Object[] result : results) {
+            Integer year = ((Number) result[0]).intValue();
+            Integer month = ((Number) result[1]).intValue();
+            Integer clubId = ((Number) result[2]).intValue();
+            String clubName = (String) result[3];
+            BigDecimal revenue = (BigDecimal) result[4];
+            Long transactionCount = ((Number) result[5]).longValue();
+            
+            // Tạo key cho tháng (year-month)
+            String monthKey = year + "-" + month;
+            
+            // Lấy hoặc tạo response cho tháng này
+            final Integer finalYear = year;
+            final Integer finalMonth = month;
+            RevenueByMonthWithClubsResponse monthResponse = monthMap.computeIfAbsent(monthKey, k -> 
+                RevenueByMonthWithClubsResponse.builder()
+                        .year(finalYear)
+                        .month(finalMonth)
+                        .totalRevenue(BigDecimal.ZERO)
+                        .totalTransactionCount(0L)
+                        .clubRevenues(new ArrayList<>())
+                        .build()
+            );
+            
+            // Cộng dồn tổng doanh thu và số giao dịch
+            monthResponse.setTotalRevenue(monthResponse.getTotalRevenue().add(revenue));
+            monthResponse.setTotalTransactionCount(
+                    monthResponse.getTotalTransactionCount() + transactionCount);
+            
+            // Thêm doanh thu của CLB vào danh sách
+            RevenueByMonthWithClubsResponse.ClubRevenueItem clubItem = 
+                RevenueByMonthWithClubsResponse.ClubRevenueItem.builder()
+                        .clubId(clubId)
+                        .clubName(clubName)
+                        .revenue(revenue)
+                        .transactionCount(transactionCount)
+                        .build();
+            
+            monthResponse.getClubRevenues().add(clubItem);
+        }
+        
+        // Chuyển map thành list và sắp xếp theo tháng giảm dần
+        return monthMap.values().stream()
+                .sorted((a, b) -> {
+                    int yearCompare = b.getYear().compareTo(a.getYear());
+                    if (yearCompare != 0) return yearCompare;
+                    return b.getMonth().compareTo(a.getMonth());
+                })
+                .collect(Collectors.toList());
     }
     
     /**

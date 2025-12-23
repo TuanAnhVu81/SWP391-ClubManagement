@@ -128,6 +128,18 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
     
+    /** Tính doanh thu theo CLB và tháng (group by club, year, month) */
+    @Query("SELECT YEAR(ph.paymentDate) as year, MONTH(ph.paymentDate) as month, " +
+           "ph.club.clubId, ph.club.clubName, " +
+           "COALESCE(SUM(ph.amount), 0) as totalRevenue, COUNT(ph) as transactionCount " +
+           "FROM PaymentHistory ph " +
+           "WHERE ph.paymentDate BETWEEN :startDate AND :endDate " +
+           "GROUP BY YEAR(ph.paymentDate), MONTH(ph.paymentDate), ph.club.clubId, ph.club.clubName " +
+           "ORDER BY year DESC, month DESC, totalRevenue DESC")
+    List<Object[]> calculateRevenueByClubAndMonth(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+    
     /** Tính doanh thu theo ngày */
     @Query("SELECT DATE(ph.paymentDate) as date, " +
            "COALESCE(SUM(ph.amount), 0) as totalRevenue, COUNT(ph) as transactionCount " +
