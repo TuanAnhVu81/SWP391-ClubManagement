@@ -4,7 +4,9 @@ import com.swp391.clubmanagement.entity.Registers;
 import com.swp391.clubmanagement.entity.Users;
 import com.swp391.clubmanagement.enums.ClubRoleType;
 import com.swp391.clubmanagement.enums.JoinStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -50,6 +52,15 @@ public interface RegisterRepository extends JpaRepository<Registers, Integer> {
     
     // Tìm đăng ký theo PayOS order code
     Optional<Registers> findByPayosOrderCode(Long orderCode);
+    
+    /**
+     * Tìm đăng ký theo ID với pessimistic write lock
+     * Dùng để tránh race condition khi nhiều request đồng thời tạo payment link hoặc xử lý webhook
+     * Lock sẽ được giữ cho đến khi transaction kết thúc
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Registers r WHERE r.subscriptionId = :subscriptionId")
+    Optional<Registers> findByIdWithLock(@Param("subscriptionId") Integer subscriptionId);
     
     // Đếm số thành viên chính thức của một CLB (đã duyệt và đã đóng phí)
     long countByMembershipPackage_Club_ClubIdAndStatusAndIsPaid(Integer clubId, JoinStatus status, Boolean isPaid);
