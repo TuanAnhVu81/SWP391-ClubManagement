@@ -1,45 +1,93 @@
+// Package định nghĩa service layer - xử lý business logic cho Leader quản lý đăng ký
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.dto.request.ApproveRegisterRequest;
-import com.swp391.clubmanagement.dto.request.ChangeRoleRequest;
-import com.swp391.clubmanagement.dto.request.ConfirmPaymentRequest;
-import com.swp391.clubmanagement.dto.response.RegisterResponse;
-import com.swp391.clubmanagement.entity.Registers;
-import com.swp391.clubmanagement.entity.Users;
-import com.swp391.clubmanagement.enums.ClubRoleType;
-import com.swp391.clubmanagement.enums.JoinStatus;
-import com.swp391.clubmanagement.exception.AppException;
-import com.swp391.clubmanagement.exception.ErrorCode;
-import com.swp391.clubmanagement.mapper.RegisterMapper;
-import com.swp391.clubmanagement.repository.RegisterRepository;
-import com.swp391.clubmanagement.repository.RoleRepository;
-import com.swp391.clubmanagement.repository.UserRepository;
-import com.swp391.clubmanagement.enums.RoleType;
-import com.swp391.clubmanagement.utils.DateTimeUtils;
+// ========== DTO ==========
+import com.swp391.clubmanagement.dto.request.ApproveRegisterRequest; // Request duyệt/từ chối đơn
+import com.swp391.clubmanagement.dto.request.ChangeRoleRequest; // Request thay đổi vai trò thành viên
+import com.swp391.clubmanagement.dto.request.ConfirmPaymentRequest; // Request xác nhận thanh toán
+import com.swp391.clubmanagement.dto.response.RegisterResponse; // Response thông tin đăng ký
+
+// ========== Entity ==========
+import com.swp391.clubmanagement.entity.Registers; // Entity đăng ký tham gia CLB
+import com.swp391.clubmanagement.entity.Users; // Entity người dùng
+
+// ========== Enum ==========
+import com.swp391.clubmanagement.enums.ClubRoleType; // Vai trò trong CLB
+import com.swp391.clubmanagement.enums.JoinStatus; // Trạng thái tham gia
+import com.swp391.clubmanagement.enums.RoleType; // Vai trò hệ thống
+
+// ========== Exception ==========
+import com.swp391.clubmanagement.exception.AppException; // Custom exception
+import com.swp391.clubmanagement.exception.ErrorCode; // Mã lỗi hệ thống
+
+// ========== Mapper ==========
+import com.swp391.clubmanagement.mapper.RegisterMapper; // Chuyển đổi Entity <-> DTO
+
+// ========== Repository ==========
+import com.swp391.clubmanagement.repository.RegisterRepository; // Repository cho bảng Registers
+import com.swp391.clubmanagement.repository.RoleRepository; // Repository cho bảng Roles
+import com.swp391.clubmanagement.repository.UserRepository; // Repository cho bảng Users
+
+// ========== Utilities ==========
+import com.swp391.clubmanagement.utils.DateTimeUtils; // Xử lý thời gian theo múi giờ VN
+
+// ========== Lombok ==========
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+// ========== Spring Framework ==========
+import org.springframework.security.core.context.SecurityContextHolder; // Lấy user hiện tại từ JWT
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
+import org.springframework.transaction.annotation.Transactional; // Quản lý transaction
 
+// ========== Java Standard Library ==========
+import java.time.LocalDateTime; // Ngày giờ
+import java.util.List; // Danh sách
+import java.util.Optional; // Optional
+
+/**
+ * Service quản lý đăng ký tham gia CLB (dành cho Leader)
+ * 
+ * Chức năng chính:
+ * - Xem danh sách đơn đăng ký vào CLB (tất cả trạng thái hoặc theo status)
+ * - Duyệt/từ chối đơn đăng ký
+ * - Xác nhận thanh toán (khi thành viên đã đóng phí)
+ * - Thay đổi vai trò thành viên (thăng chức/hạ chức)
+ * - Xóa thành viên khỏi CLB (kick)
+ * 
+ * Business Rules:
+ * - Chỉ Leader (ChuTich, PhoChuTich) mới được thực hiện các chức năng này
+ * - Khi thay đổi role thành ChuTich, tự động cập nhật Role trong bảng Users
+ * - Khi ChuTich thăng người khác thành ChuTich, tự động hạ mình xuống ThanhVien
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
+ */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class LeaderRegisterService {
+    /** Repository thao tác với bảng registers */
     RegisterRepository registerRepository;
+    
+    /** Repository thao tác với bảng users */
     UserRepository userRepository;
+    
+    /** Mapper chuyển đổi Entity (Registers) <-> DTO (RegisterResponse) */
     RegisterMapper registerMapper;
+    
+    /** Repository thao tác với bảng roles (để cập nhật Role khi thay đổi ClubRole) */
     RoleRepository roleRepository;
+    
+    /** Service tạo payment history khi xác nhận thanh toán */
     PaymentHistoryService paymentHistoryService;
 
-    // Các vai trò được phép duyệt đơn
+    /** Các vai trò được phép duyệt đơn (ChuTich, PhoChuTich) */
     private static final List<ClubRoleType> LEADER_ROLES = List.of(
             ClubRoleType.ChuTich, 
             ClubRoleType.PhoChuTich

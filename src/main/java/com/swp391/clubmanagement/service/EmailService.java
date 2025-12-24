@@ -1,22 +1,48 @@
+// Package định nghĩa service layer - xử lý gửi email
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.exception.AppException;
-import com.swp391.clubmanagement.exception.ErrorCode;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.stereotype.Service;
+// ========== Exception ==========
+import com.swp391.clubmanagement.exception.AppException; // Custom exception
+import com.swp391.clubmanagement.exception.ErrorCode; // Mã lỗi hệ thống
 
+// ========== Jakarta Mail ==========
+import jakarta.mail.MessagingException; // Exception khi gửi email
+import jakarta.mail.internet.MimeMessage; // Email message (HTML)
+
+// ========== Lombok ==========
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
+
+// ========== Spring Framework ==========
+import org.springframework.mail.javamail.JavaMailSender; // Service gửi email (SMTP)
+import org.springframework.mail.javamail.MimeMessageHelper; // Helper để tạo email HTML
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
+
+/**
+ * Service gửi email
+ * 
+ * Chức năng chính:
+ * - Gửi email xác thực (verification email) với link xác thực
+ * - Gửi email quên mật khẩu (forgot password) với mật khẩu mới
+ * 
+ * Business Rules:
+ * - Sử dụng HTML template để tạo email đẹp
+ * - Email được gửi qua SMTP (JavaMailSender)
+ * - Tất cả email đều có format HTML với styling
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
+ */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class EmailService {
+    /** JavaMailSender để gửi email qua SMTP */
     JavaMailSender javaMailSender;
 
     /**

@@ -1,34 +1,65 @@
+// Package định nghĩa service layer - xử lý business logic cho lịch sử giao dịch và doanh thu
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.dto.response.PaymentHistoryResponse;
-import com.swp391.clubmanagement.dto.response.RevenueResponse;
-import com.swp391.clubmanagement.dto.response.RevenueByMonthWithClubsResponse;
-import com.swp391.clubmanagement.entity.Clubs;
-import com.swp391.clubmanagement.entity.PaymentHistory;
-import com.swp391.clubmanagement.entity.Registers;
-import com.swp391.clubmanagement.entity.Users;
-import com.swp391.clubmanagement.exception.AppException;
-import com.swp391.clubmanagement.exception.ErrorCode;
-import com.swp391.clubmanagement.repository.ClubRepository;
-import com.swp391.clubmanagement.repository.PaymentHistoryRepository;
-import com.swp391.clubmanagement.repository.UserRepository;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+// ========== DTO ==========
+import com.swp391.clubmanagement.dto.response.PaymentHistoryResponse; // Response lịch sử giao dịch
+import com.swp391.clubmanagement.dto.response.RevenueResponse; // Response doanh thu
+import com.swp391.clubmanagement.dto.response.RevenueByMonthWithClubsResponse; // Response doanh thu theo tháng kèm CLB
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+// ========== Entity ==========
+import com.swp391.clubmanagement.entity.Clubs; // Entity CLB
+import com.swp391.clubmanagement.entity.PaymentHistory; // Entity lịch sử thanh toán
+import com.swp391.clubmanagement.entity.Registers; // Entity đăng ký tham gia CLB
+import com.swp391.clubmanagement.entity.Users; // Entity người dùng
+
+// ========== Exception ==========
+import com.swp391.clubmanagement.exception.AppException; // Custom exception
+import com.swp391.clubmanagement.exception.ErrorCode; // Mã lỗi hệ thống
+
+// ========== Repository ==========
+import com.swp391.clubmanagement.repository.ClubRepository; // Repository cho bảng Clubs
+import com.swp391.clubmanagement.repository.PaymentHistoryRepository; // Repository cho bảng PaymentHistory
+import com.swp391.clubmanagement.repository.UserRepository; // Repository cho bảng Users
+
+// ========== Lombok ==========
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
+
+// ========== Spring Framework ==========
+import org.springframework.data.domain.Page; // Phân trang
+import org.springframework.data.domain.Pageable; // Thông tin phân trang
+import org.springframework.security.core.context.SecurityContextHolder; // Lấy user hiện tại từ JWT
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
+import org.springframework.transaction.annotation.Transactional; // Quản lý transaction
+
+// ========== Java Standard Library ==========
+import java.math.BigDecimal; // Số tiền (doanh thu)
+import java.time.LocalDateTime; // Ngày giờ
+import java.util.*; // Collections
+import java.util.stream.Collectors; // Collect stream thành collection
 
 /**
- * PaymentHistoryService - Service xử lý lịch sử giao dịch và tính doanh thu
+ * Service xử lý lịch sử giao dịch và tính doanh thu
+ * 
+ * Chức năng chính:
+ * - Tạo payment history record khi thanh toán thành công
+ * - Xem lịch sử giao dịch của user hiện tại
+ * - Xem lịch sử giao dịch của một CLB
+ * - Tính tổng doanh thu của một CLB
+ * - Tính doanh thu theo tháng (của CLB hoặc toàn hệ thống)
+ * - Tính doanh thu theo tháng kèm danh sách doanh thu từng CLB
+ * 
+ * Business Rules:
+ * - Payment history được tạo tự động khi Leader xác nhận thanh toán
+ * - Doanh thu chỉ tính các giao dịch đã thanh toán thành công
+ * - Có thể tính doanh thu theo CLB hoặc theo tháng
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
  */
 @Service
 @RequiredArgsConstructor
@@ -36,8 +67,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PaymentHistoryService {
     
+    /** Repository thao tác với bảng payment_history */
     PaymentHistoryRepository paymentHistoryRepository;
+    
+    /** Repository thao tác với bảng users */
     UserRepository userRepository;
+    
+    /** Repository thao tác với bảng clubs */
     ClubRepository clubRepository;
     
     /**
