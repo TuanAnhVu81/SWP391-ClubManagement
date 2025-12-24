@@ -54,15 +54,15 @@ public class UserController {
         }
     }
 
-    @PostMapping("/verify")
-    @Operation(summary = "Xác thực email bằng mã code", 
-               description = "Xác thực email bằng mã code được gửi đến email. Người dùng nhập mã code để xác thực tài khoản.")
-    ApiResponse<String> verifyEmail(@RequestBody VerifyEmailRequest request) {
-        userService.verifyEmail(request);
-        return ApiResponse.<String>builder()
-                .result("Xác thực email thành công")
-                .build();
-    }
+//    @PostMapping("/verify")
+//    @Operation(summary = "Xác thực email bằng mã code",
+//               description = "Xác thực email bằng mã code được gửi đến email. Người dùng nhập mã code để xác thực tài khoản.")
+//    ApiResponse<String> verifyEmail(@RequestBody VerifyEmailRequest request) {
+//        userService.verifyEmail(request);
+//        return ApiResponse.<String>builder()
+//                .result("Xác thực email thành công")
+//                .build();
+//    }
 
     @PostMapping("/forgot-password")
     @Operation(summary = "Quên mật khẩu", 

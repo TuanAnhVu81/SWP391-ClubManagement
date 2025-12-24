@@ -61,9 +61,9 @@ public class MembershipController {
     public ApiResponse<MembershipResponse> createPackage(
             @PathVariable Integer clubId,
             @Valid @RequestBody MembershipCreateRequest request) {
-        
+
         MembershipResponse response = membershipService.createPackage(clubId, request);
-        
+
         return ApiResponse.<MembershipResponse>builder()
                 .result(response)
                 .build();
@@ -91,15 +91,15 @@ public class MembershipController {
      * DELETE /api/packages/{packageId}
      * Đóng gói đăng ký (Soft delete hoặc set is_active=false) - Leader only
      */
-    @DeleteMapping("/{packageId}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
-    @Operation(summary = "Đóng gói đăng ký", description = "Đóng gói đăng ký (Soft delete hoặc set is_active=false)")
-    public ApiResponse<Void> deletePackage(@PathVariable Integer packageId) {
-        membershipService.deletePackage(packageId);
-        
-        return ApiResponse.<Void>builder()
-                .message("Package đã được đóng thành công")
-                .build();
-    }
+//    @DeleteMapping("/{packageId}")
+//    @PreAuthorize("hasAnyAuthority('SCOPE_SinhVien', 'SCOPE_ChuTich')")
+//    @Operation(summary = "Đóng gói đăng ký", description = "Đóng gói đăng ký (Soft delete hoặc set is_active=false)")
+//    public ApiResponse<Void> deletePackage(@PathVariable Integer packageId) {
+//        membershipService.deletePackage(packageId);
+//
+//        return ApiResponse.<Void>builder()
+//                .message("Package đã được đóng thành công")
+//                .build();
+//    }
 }
 

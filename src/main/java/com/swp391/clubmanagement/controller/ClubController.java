@@ -91,9 +91,9 @@ public class ClubController {
     @GetMapping("/{clubId}/members")
     @Operation(summary = "Danh sách thành viên CLB", description = "Xem danh sách thành viên của CLB đó")
     public ApiResponse<List<ClubMemberResponse>> getClubMembers(@PathVariable Integer clubId) {
-        
+
         List<ClubMemberResponse> responses = clubService.getClubMembers(clubId);
-        
+
         return ApiResponse.<List<ClubMemberResponse>>builder()
                 .result(responses)
                 .build();
