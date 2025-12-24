@@ -1,56 +1,103 @@
+// Package định nghĩa service layer - xử lý business logic cho quản lý CLB
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.dto.request.ClubUpdateRequest;
-import com.swp391.clubmanagement.dto.response.ClubMemberResponse;
-import com.swp391.clubmanagement.dto.response.ClubResponse;
-import com.swp391.clubmanagement.dto.response.ClubStatsResponse;
-import com.swp391.clubmanagement.dto.response.JoinedClubResponse;
-import com.swp391.clubmanagement.entity.ClubApplications;
-import com.swp391.clubmanagement.entity.Clubs;
-import com.swp391.clubmanagement.entity.Memberships;
-import com.swp391.clubmanagement.entity.Registers;
-import com.swp391.clubmanagement.entity.Users;
-import com.swp391.clubmanagement.enums.ClubCategory;
-import com.swp391.clubmanagement.enums.ClubRoleType;
-import com.swp391.clubmanagement.enums.JoinStatus;
-import com.swp391.clubmanagement.exception.AppException;
-import com.swp391.clubmanagement.exception.ErrorCode;
-import com.swp391.clubmanagement.mapper.ClubMapper;
-import com.swp391.clubmanagement.repository.ClubApplicationRepository;
-import com.swp391.clubmanagement.repository.ClubRepository;
-import com.swp391.clubmanagement.repository.MembershipRepository;
-import com.swp391.clubmanagement.repository.RegisterRepository;
-import com.swp391.clubmanagement.repository.RoleRepository;
-import com.swp391.clubmanagement.repository.UserRepository;
-import com.swp391.clubmanagement.enums.RoleType;
+// ========== DTO ==========
+import com.swp391.clubmanagement.dto.request.ClubUpdateRequest; // Request cập nhật CLB
+import com.swp391.clubmanagement.dto.response.ClubMemberResponse; // Response danh sách thành viên
+import com.swp391.clubmanagement.dto.response.ClubResponse; // Response thông tin CLB
+import com.swp391.clubmanagement.dto.response.ClubStatsResponse; // Response thống kê CLB
+import com.swp391.clubmanagement.dto.response.JoinedClubResponse; // Response CLB đã tham gia
+
+// ========== Entity ==========
+import com.swp391.clubmanagement.entity.ClubApplications; // Entity đơn yêu cầu thành lập CLB
+import com.swp391.clubmanagement.entity.Clubs; // Entity CLB
+import com.swp391.clubmanagement.entity.Memberships; // Entity gói membership
+import com.swp391.clubmanagement.entity.Registers; // Entity đăng ký tham gia CLB
+import com.swp391.clubmanagement.entity.Users; // Entity người dùng
+
+// ========== Enum ==========
+import com.swp391.clubmanagement.enums.ClubCategory; // Danh mục CLB
+import com.swp391.clubmanagement.enums.ClubRoleType; // Vai trò trong CLB
+import com.swp391.clubmanagement.enums.JoinStatus; // Trạng thái tham gia
+import com.swp391.clubmanagement.enums.RoleType; // Vai trò hệ thống
+
+// ========== Exception ==========
+import com.swp391.clubmanagement.exception.AppException; // Custom exception
+import com.swp391.clubmanagement.exception.ErrorCode; // Mã lỗi hệ thống
+
+// ========== Mapper ==========
+import com.swp391.clubmanagement.mapper.ClubMapper; // Chuyển đổi Entity <-> DTO
+
+// ========== Repository ==========
+import com.swp391.clubmanagement.repository.ClubApplicationRepository; // Repository cho bảng ClubApplications
+import com.swp391.clubmanagement.repository.ClubRepository; // Repository cho bảng Clubs
+import com.swp391.clubmanagement.repository.MembershipRepository; // Repository cho bảng Memberships
+import com.swp391.clubmanagement.repository.RegisterRepository; // Repository cho bảng Registers
+import com.swp391.clubmanagement.repository.RoleRepository; // Repository cho bảng Roles
+import com.swp391.clubmanagement.repository.UserRepository; // Repository cho bảng Users
+
+// ========== Lombok ==========
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+// ========== Spring Framework ==========
+import org.springframework.security.core.context.SecurityContextHolder; // Lấy user hiện tại từ JWT
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
+import org.springframework.transaction.annotation.Transactional; // Quản lý transaction
 
+// ========== Java Standard Library ==========
+import java.math.BigDecimal; // Số tiền (doanh thu)
+import java.time.LocalDateTime; // Ngày giờ
+import java.time.YearMonth; // Năm-tháng (để tính doanh thu theo tháng)
+import java.time.format.DateTimeFormatter; // Format ngày giờ
+import java.util.Arrays; // Mảng
+import java.util.List; // Danh sách
+import java.util.stream.Collectors; // Collect stream thành collection
+
+/**
+ * Service quản lý CLB
+ * 
+ * Chức năng chính:
+ * - Xem danh sách CLB (có thể search và filter)
+ * - Xem chi tiết CLB
+ * - Cập nhật thông tin CLB (Leader only)
+ * - Xem danh sách thành viên CLB
+ * - Thống kê CLB (Leader only): số thành viên, doanh thu, etc.
+ * - Xem CLB đã tham gia (Student)
+ * - Xóa CLB (Admin only)
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
+ */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class ClubService {
     
+    /** Repository thao tác với bảng clubs */
     ClubRepository clubRepository;
+    
+    /** Repository thao tác với bảng club_applications */
     ClubApplicationRepository clubApplicationRepository;
+    
+    /** Repository thao tác với bảng memberships */
     MembershipRepository membershipRepository;
+    
+    /** Repository thao tác với bảng registers */
     RegisterRepository registerRepository;
+    
+    /** Repository thao tác với bảng users */
     UserRepository userRepository;
+    
+    /** Repository thao tác với bảng roles */
     RoleRepository roleRepository;
+    
+    /** Mapper chuyển đổi Entity (Clubs) <-> DTO (ClubResponse) */
     ClubMapper clubMapper;
     
     /**

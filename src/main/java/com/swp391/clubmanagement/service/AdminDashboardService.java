@@ -1,36 +1,79 @@
+// Package định nghĩa service layer - xử lý business logic cho Admin Dashboard
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.dto.response.AdminDashboardResponse;
-import com.swp391.clubmanagement.dto.response.ClubResponse;
-import com.swp391.clubmanagement.dto.response.ClubStatistic;
-import com.swp391.clubmanagement.entity.Clubs;
-import com.swp391.clubmanagement.enums.ClubCategory;
-import com.swp391.clubmanagement.enums.ClubRoleType;
-import com.swp391.clubmanagement.enums.JoinStatus;
-import com.swp391.clubmanagement.mapper.ClubMapper;
-import com.swp391.clubmanagement.repository.ClubRepository;
-import com.swp391.clubmanagement.repository.RegisterRepository;
-import com.swp391.clubmanagement.repository.UserRepository;
+// ========== DTO ==========
+import com.swp391.clubmanagement.dto.response.AdminDashboardResponse; // Response dữ liệu dashboard
+import com.swp391.clubmanagement.dto.response.ClubResponse; // Response thông tin CLB
+import com.swp391.clubmanagement.dto.response.ClubStatistic; // Response thống kê CLB
+
+// ========== Entity ==========
+import com.swp391.clubmanagement.entity.Clubs; // Entity CLB
+
+// ========== Enum ==========
+import com.swp391.clubmanagement.enums.ClubCategory; // Danh mục CLB
+import com.swp391.clubmanagement.enums.ClubRoleType; // Vai trò trong CLB
+import com.swp391.clubmanagement.enums.JoinStatus; // Trạng thái tham gia
+
+// ========== Mapper ==========
+import com.swp391.clubmanagement.mapper.ClubMapper; // Chuyển đổi Entity <-> DTO
+
+// ========== Repository ==========
+import com.swp391.clubmanagement.repository.ClubRepository; // Repository cho bảng Clubs
+import com.swp391.clubmanagement.repository.RegisterRepository; // Repository cho bảng Registers
+import com.swp391.clubmanagement.repository.UserRepository; // Repository cho bảng Users
+
+// ========== Lombok ==========
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
 
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+// ========== Spring Framework ==========
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
 
+// ========== Java Standard Library ==========
+import java.time.LocalDate; // Ngày
+import java.util.HashMap; // Map
+import java.util.List; // Danh sách
+import java.util.Map; // Map interface
+import java.util.stream.Collectors; // Collect stream thành collection
+
+/**
+ * Service quản lý Admin Dashboard
+ * 
+ * Chức năng chính:
+ * - Lấy dữ liệu tổng quan cho Dashboard Admin
+ * - Thống kê số lượng CLB, thành viên, sinh viên
+ * - Thống kê CLB theo danh mục (category)
+ * - Thống kê thành viên theo vai trò (ClubRoleType)
+ * - Top 5 CLB có nhiều thành viên nhất
+ * - Danh sách CLB mới trong tháng
+ * 
+ * Business Rules:
+ * - Chỉ Admin mới được xem dashboard (được kiểm tra ở Controller)
+ * - Tổng số thành viên = số lượng registration (1 sinh viên có thể tham gia nhiều CLB)
+ * - Tổng số sinh viên = số lượng user duy nhất đã tham gia CLB
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
+ */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class AdminDashboardService {
+    /** Repository thao tác với bảng clubs */
     ClubRepository clubRepository;
+    
+    /** Repository thao tác với bảng registers */
     RegisterRepository registerRepository;
+    
+    /** Repository thao tác với bảng users */
     UserRepository userRepository;
+    
+    /** Mapper chuyển đổi Entity (Clubs) <-> DTO (ClubResponse) */
     ClubMapper clubMapper;
 
     /**

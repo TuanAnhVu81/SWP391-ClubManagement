@@ -1,54 +1,87 @@
+// Package định nghĩa service layer - xử lý tích hợp với PayOS payment gateway
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.dto.request.PayOSCreatePaymentRequest;
-import com.swp391.clubmanagement.dto.response.ConfirmWebhookResponse;
-import com.swp391.clubmanagement.dto.response.PayOSPaymentLinkResponse;
-import com.swp391.clubmanagement.dto.response.PayOSWebhookData;
-import com.swp391.clubmanagement.exception.AppException;
-import com.swp391.clubmanagement.exception.ErrorCode;
+// ========== DTO ==========
+import com.swp391.clubmanagement.dto.request.PayOSCreatePaymentRequest; // Request tạo payment link
+import com.swp391.clubmanagement.dto.response.ConfirmWebhookResponse; // Response xác nhận webhook
+import com.swp391.clubmanagement.dto.response.PayOSPaymentLinkResponse; // Response payment link
+import com.swp391.clubmanagement.dto.response.PayOSWebhookData; // Dữ liệu webhook từ PayOS
+
+// ========== Exception ==========
+import com.swp391.clubmanagement.exception.AppException; // Custom exception
+import com.swp391.clubmanagement.exception.ErrorCode; // Mã lỗi hệ thống
+
+// ========== Lombok ==========
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.experimental.NonFinal; // Cho phép field không final
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+// ========== Spring Framework ==========
+import org.springframework.beans.factory.annotation.Value; // Inject giá trị từ config
+import org.springframework.http.*; // HTTP headers, status, media type
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
+import org.springframework.web.client.HttpClientErrorException; // Exception cho 4xx errors
+import org.springframework.web.client.HttpServerErrorException; // Exception cho 5xx errors
+import org.springframework.web.client.RestClientException; // Exception cho network errors
+import org.springframework.web.client.RestTemplate; // HTTP client để gọi PayOS API
 
+// ========== Java Cryptography ==========
+import javax.crypto.Mac; // HMAC (Hash-based Message Authentication Code)
+import javax.crypto.spec.SecretKeySpec; // Secret key cho HMAC
+import java.nio.charset.StandardCharsets; // UTF-8 charset
+import java.security.InvalidKeyException; // Exception khi key không hợp lệ
+import java.security.NoSuchAlgorithmException; // Exception khi algorithm không tồn tại
+
+/**
+ * Service tích hợp với PayOS payment gateway
+ * 
+ * Chức năng chính:
+ * - Tạo payment link từ PayOS (để user thanh toán)
+ * - Xác thực webhook signature từ PayOS (đảm bảo webhook hợp lệ)
+ * - Xác nhận webhook URL với PayOS
+ * 
+ * Business Rules:
+ * - Sử dụng HMAC SHA256 để tạo và verify signature
+ * - Signature được tạo từ: amount + orderCode + description
+ * - Tất cả request đến PayOS API đều cần client-id và api-key
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
+ */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class PayOSService {
     
+    /** RestTemplate để gọi PayOS API (HTTP client) */
     RestTemplate restTemplate = new RestTemplate();
     
+    /** Client ID của PayOS (đọc từ application.properties) */
     @NonFinal
     @Value("${payos.client-id}")
     String clientId;
     
+    /** API Key của PayOS (đọc từ application.properties) */
     @NonFinal
     @Value("${payos.api-key}")
     String apiKey;
     
+    /** Checksum Key để tạo và verify signature (đọc từ application.properties) */
     @NonFinal
     @Value("${payos.checksum-key}")
     String checksumKey;
     
+    /** Base URL của PayOS API (đọc từ application.properties) */
     @NonFinal
     @Value("${payos.api-url}")
     String apiUrl;
     
+    /** Base URL của ứng dụng (để tạo returnUrl và cancelUrl) */
     @NonFinal
     @Value("${app.base-url}")
     String baseUrl;

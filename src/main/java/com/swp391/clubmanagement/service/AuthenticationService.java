@@ -1,37 +1,54 @@
+// Package định nghĩa service layer - xử lý authentication và JWT token
 package com.swp391.clubmanagement.service;
 
-import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jose.crypto.MACVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import com.swp391.clubmanagement.dto.request.AuthenticationRequest;
-import com.swp391.clubmanagement.dto.request.IntrospectRequest;
-import com.swp391.clubmanagement.dto.request.LogoutRequest;
-import com.swp391.clubmanagement.dto.response.AuthenticationResponse;
-import com.swp391.clubmanagement.dto.response.IntrospectResponse;
-import com.swp391.clubmanagement.entity.Users;
-import com.swp391.clubmanagement.enums.JoinStatus;
-import com.swp391.clubmanagement.exception.AppException;
-import com.swp391.clubmanagement.exception.ErrorCode;
-import com.swp391.clubmanagement.repository.ClubRepository;
-import com.swp391.clubmanagement.repository.RegisterRepository;
-import com.swp391.clubmanagement.repository.UserRepository;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+// ========== JWT Library (Nimbus JOSE + JWT) ==========
+import com.nimbusds.jose.*; // JOSE (JSON Object Signing and Encryption) - xử lý JWT
+import com.nimbusds.jose.crypto.MACSigner; // Ký JWT token bằng MAC (Message Authentication Code)
+import com.nimbusds.jose.crypto.MACVerifier; // Xác minh chữ ký JWT token
+import com.nimbusds.jwt.JWTClaimsSet; // Payload của JWT (claims)
+import com.nimbusds.jwt.SignedJWT; // JWT đã được ký
 
-import java.text.ParseException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
+// ========== DTO ==========
+import com.swp391.clubmanagement.dto.request.AuthenticationRequest; // Request đăng nhập
+import com.swp391.clubmanagement.dto.request.IntrospectRequest; // Request kiểm tra token
+import com.swp391.clubmanagement.dto.request.LogoutRequest; // Request đăng xuất
+import com.swp391.clubmanagement.dto.response.AuthenticationResponse; // Response đăng nhập (chứa token)
+import com.swp391.clubmanagement.dto.response.IntrospectResponse; // Response kiểm tra token (valid/invalid)
+
+// ========== Entity ==========
+import com.swp391.clubmanagement.entity.Users; // Entity người dùng
+
+// ========== Enum ==========
+import com.swp391.clubmanagement.enums.JoinStatus; // Trạng thái tham gia CLB
+
+// ========== Exception ==========
+import com.swp391.clubmanagement.exception.AppException; // Custom exception
+import com.swp391.clubmanagement.exception.ErrorCode; // Mã lỗi hệ thống
+
+// ========== Repository ==========
+import com.swp391.clubmanagement.repository.ClubRepository; // Repository cho bảng Clubs
+import com.swp391.clubmanagement.repository.RegisterRepository; // Repository cho bảng Registers
+import com.swp391.clubmanagement.repository.UserRepository; // Repository cho bảng Users
+
+// ========== Lombok ==========
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.experimental.NonFinal; // Cho phép field không final (dùng với @Value)
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
+
+// ========== Spring Framework ==========
+import org.springframework.beans.factory.annotation.Value; // Inject giá trị từ application.properties
+import org.springframework.security.crypto.password.PasswordEncoder; // Mã hóa/so sánh mật khẩu (BCrypt)
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
+
+// ========== Java Standard Library ==========
+import java.text.ParseException; // Exception khi parse JWT token
+import java.time.Instant; // Thời điểm cụ thể
+import java.time.temporal.ChronoUnit; // Đơn vị thời gian (HOURS, DAYS, etc.)
+import java.util.Date; // Ngày giờ
+import java.util.List; // Danh sách
+import java.util.stream.Collectors; // Collect stream thành collection
 
 /**
  * AuthenticationService - Service xử lý logic xác thực và quản lý JWT token
@@ -44,16 +61,40 @@ import java.util.stream.Collectors;
  * 
  * Sử dụng thuật toán HS512 để ký và xác minh JWT token.
  */
+/**
+ * Service xử lý logic xác thực và quản lý JWT token
+ * 
+ * Chức năng chính:
+ * 1. Xác thực người dùng (đăng nhập): Kiểm tra email, mật khẩu, trạng thái tài khoản
+ * 2. Tạo JWT token: Sinh token chứa thông tin user và quyền truy cập
+ * 3. Xác minh token: Kiểm tra tính hợp lệ của token (chữ ký, thời hạn)
+ * 4. Đăng xuất: Xử lý logout (có thể mở rộng thêm blacklist token)
+ * 
+ * Sử dụng thuật toán HS512 (HMAC-SHA512) để ký và xác minh JWT token
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationService {
+    /** Repository thao tác với bảng users - tìm user theo email */
     UserRepository userRepository;
+    
+    /** PasswordEncoder để mã hóa và so sánh mật khẩu (BCrypt) */
     PasswordEncoder passwordEncoder;
+    
+    /** Repository thao tác với bảng clubs - lấy CLB mà user là founder */
     ClubRepository clubRepository;
+    
+    /** Repository thao tác với bảng registers - lấy CLB mà user là member */
     RegisterRepository registerRepository;
 
+    /** Secret key để ký và xác minh JWT token (đọc từ application.properties) */
     @NonFinal
     @Value("${jwt.signerKey}")
     protected String SIGNER_KEY;

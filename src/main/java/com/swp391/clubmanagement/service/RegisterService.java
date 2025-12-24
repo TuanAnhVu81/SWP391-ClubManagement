@@ -1,38 +1,82 @@
+// Package định nghĩa service layer - xử lý business logic cho đăng ký tham gia CLB
 package com.swp391.clubmanagement.service;
 
-import com.swp391.clubmanagement.dto.request.JoinClubRequest;
-import com.swp391.clubmanagement.dto.request.RenewMembershipRequest;
-import com.swp391.clubmanagement.dto.response.RegisterResponse;
-import com.swp391.clubmanagement.entity.Memberships;
-import com.swp391.clubmanagement.entity.Registers;
-import com.swp391.clubmanagement.entity.Users;
-import com.swp391.clubmanagement.enums.ClubRoleType;
-import com.swp391.clubmanagement.enums.JoinStatus;
-import com.swp391.clubmanagement.enums.RoleType;
-import com.swp391.clubmanagement.exception.AppException;
-import com.swp391.clubmanagement.exception.ErrorCode;
-import com.swp391.clubmanagement.mapper.RegisterMapper;
-import com.swp391.clubmanagement.repository.MembershipRepository;
-import com.swp391.clubmanagement.repository.RegisterRepository;
-import com.swp391.clubmanagement.repository.UserRepository;
+// ========== DTO ==========
+import com.swp391.clubmanagement.dto.request.JoinClubRequest; // Request đăng ký tham gia CLB
+import com.swp391.clubmanagement.dto.request.RenewMembershipRequest; // Request gia hạn membership
+import com.swp391.clubmanagement.dto.response.RegisterResponse; // Response thông tin đăng ký
+
+// ========== Entity ==========
+import com.swp391.clubmanagement.entity.Memberships; // Entity gói membership
+import com.swp391.clubmanagement.entity.Registers; // Entity đăng ký tham gia CLB
+import com.swp391.clubmanagement.entity.Users; // Entity người dùng
+
+// ========== Enum ==========
+import com.swp391.clubmanagement.enums.ClubRoleType; // Vai trò trong CLB
+import com.swp391.clubmanagement.enums.JoinStatus; // Trạng thái tham gia
+import com.swp391.clubmanagement.enums.RoleType; // Vai trò hệ thống
+
+// ========== Exception ==========
+import com.swp391.clubmanagement.exception.AppException; // Custom exception
+import com.swp391.clubmanagement.exception.ErrorCode; // Mã lỗi hệ thống
+
+// ========== Mapper ==========
+import com.swp391.clubmanagement.mapper.RegisterMapper; // Chuyển đổi Entity <-> DTO
+
+// ========== Repository ==========
+import com.swp391.clubmanagement.repository.MembershipRepository; // Repository cho bảng Memberships
+import com.swp391.clubmanagement.repository.RegisterRepository; // Repository cho bảng Registers
+import com.swp391.clubmanagement.repository.UserRepository; // Repository cho bảng Users
+
+// ========== Lombok ==========
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor; // Tự động tạo constructor inject dependencies
+import lombok.experimental.FieldDefaults; // Tự động thêm private final cho fields
+import lombok.extern.slf4j.Slf4j; // Tự động tạo logger
 
-import java.time.LocalDateTime;
-import java.util.List;
+// ========== Spring Framework ==========
+import org.springframework.security.core.context.SecurityContextHolder; // Lấy user hiện tại từ JWT
+import org.springframework.stereotype.Service; // Đánh dấu class là Spring Service Bean
 
+// ========== Java Standard Library ==========
+import java.time.LocalDateTime; // Ngày giờ
+import java.util.List; // Danh sách
+
+/**
+ * Service quản lý đăng ký tham gia CLB
+ * 
+ * Chức năng chính:
+ * - Đăng ký tham gia CLB (mua gói membership)
+ * - Xem danh sách đăng ký của mình
+ * - Xem chi tiết đăng ký
+ * - Hủy đăng ký (chỉ khi còn ChoDuyet)
+ * - Rời khỏi CLB (chỉ dành cho thành viên, không dành cho ChuTich)
+ * - Gia hạn membership (khi hết hạn)
+ * 
+ * Business Rules:
+ * - Một user chỉ có thể là thành viên active của 1 CLB tại một thời điểm
+ * - Tự động kiểm tra và cập nhật status nếu membership hết hạn (HetHan)
+ * 
+ * @Service: Spring Service Bean, được quản lý bởi IoC Container
+ * @RequiredArgsConstructor: Lombok tự động tạo constructor inject dependencies
+ * @FieldDefaults: Tự động thêm private final cho các field
+ * @Slf4j: Tự động tạo logger với tên "log"
+ */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class RegisterService {
+    /** Repository thao tác với bảng registers */
     RegisterRepository registerRepository;
+    
+    /** Repository thao tác với bảng memberships */
     MembershipRepository membershipRepository;
+    
+    /** Repository thao tác với bảng users */
     UserRepository userRepository;
+    
+    /** Mapper chuyển đổi Entity (Registers) <-> DTO (RegisterResponse) */
     RegisterMapper registerMapper;
 
     /**
