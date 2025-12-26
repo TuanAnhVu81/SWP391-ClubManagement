@@ -19,6 +19,7 @@ public enum ErrorCode {
     EMAIL_SEND_FAILED(1002, "Gửi email thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_VERIFICATION_CODE(1003, "Mã xác thực không hợp lệ", HttpStatus.BAD_REQUEST),
     VERIFICATION_LINK_EXPIRED(1004, "Liên kết xác thực đã hết hạn", HttpStatus.BAD_REQUEST),
+    EMAIL_ALREADY_EXISTS(1005, "Email đã được sử dụng bởi CLB khác", HttpStatus.BAD_REQUEST),
     
     // --- User Related Errors (Lỗi liên quan đến người dùng - 2xxx) ---
     USER_EXISTED(2001, "Người dùng đã tồn tại", HttpStatus.BAD_REQUEST),

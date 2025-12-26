@@ -1,5 +1,6 @@
 package com.swp391.clubmanagement.dto.request;
 
+import jakarta.validation.constraints.Email;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -15,4 +16,7 @@ public class ClubUpdateRequest {
     String description; // Mô tả CLB
     
     String location; // Địa điểm sinh hoạt
+
+    @Email(message = "Email không hợp lệ")
+    String email; // Email liên hệ của CLB
 }

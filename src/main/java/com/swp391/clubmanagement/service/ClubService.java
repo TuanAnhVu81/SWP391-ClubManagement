@@ -243,6 +243,13 @@ public class ClubService {
         if (request.getLocation() != null) {
             club.setLocation(request.getLocation());
         }
+        if (request.getEmail() != null) {
+            // Optional: Kiểm tra email có bị trùng với CLB khác không
+            if (clubRepository.existsByEmailAndClubIdNot(request.getEmail(), clubId)) {
+                throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            }
+            club.setEmail(request.getEmail());
+        }
         
         club = clubRepository.save(club);
         log.info("Club {} updated by leader {}", clubId, currentUser.getEmail());

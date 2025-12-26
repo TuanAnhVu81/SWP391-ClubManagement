@@ -83,4 +83,7 @@ public interface ClubRepository extends JpaRepository<Clubs, Integer> {
      */
     @Query("SELECT c FROM Clubs c WHERE c.isActive = true AND c.establishedDate >= :startOfMonth ORDER BY c.establishedDate DESC")
     List<Clubs> findNewClubsThisMonth(@Param("startOfMonth") LocalDate startOfMonth);
+
+    // Kiểm tra email đã tồn tại cho CLB khác (không tính CLB hiện tại)
+    boolean existsByEmailAndClubIdNot(String email, Integer clubId);
 }
