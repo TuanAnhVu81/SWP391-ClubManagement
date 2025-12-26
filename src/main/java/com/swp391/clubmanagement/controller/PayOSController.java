@@ -318,21 +318,18 @@ public class PayOSController {
         }
         
         try {
-            // Verify signature (TẠM THỜI SKIP để test)
-            // TODO: Bật lại sau khi test thành công
-            /*
-            boolean isValid = payOSService.verifyWebhookSignature(
-                    webhookData.getCode(),
-                    webhookData.getDesc(),
-                    webhookData.getData(),
-                    webhookData.getSignature()
-            );
-            
-            if (!isValid) {
-                log.error("Invalid webhook signature");
-                throw new AppException(ErrorCode.INVALID_PAYMENT_SIGNATURE);
-            }
-            */
+//            boolean isValid = payOSService.verifyWebhookSignature(
+//                    webhookData.getCode(),
+//                    webhookData.getDesc(),
+//                    webhookData.getData(),
+//                    webhookData.getSignature()
+//            );
+//
+//            if (!isValid) {
+//                log.error("Invalid webhook signature");
+//                throw new AppException(ErrorCode.INVALID_PAYMENT_SIGNATURE);
+//            }
+
             log.warn("SIGNATURE VERIFICATION SKIPPED FOR TESTING");
             
             // Kiểm tra code = "00" (thành công)

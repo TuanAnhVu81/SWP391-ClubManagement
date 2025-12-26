@@ -183,7 +183,8 @@ public class RegisterService {
             
             // Nếu status = TuChoi, DaRoiCLB, hoặc HetHan -> CHO PHÉP tái gia nhập
             // TÁI SỬ DỤNG registration cũ thay vì xóa (để tránh conflict với PaymentHistory)
-            if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB || oldStatus == JoinStatus.HetHan) {
+            if (oldStatus == JoinStatus.TuChoi || oldStatus == JoinStatus.DaRoiCLB 
+                    || oldStatus == JoinStatus.HetHan) {
                 log.info("User {} re-applying to club {} after previous status: {}. Reusing existing registration.", 
                         currentUser.getEmail(), clubId, oldStatus);
                 
@@ -280,6 +281,8 @@ public class RegisterService {
 
     /**
      * Hủy đăng ký (chỉ khi trạng thái còn ChoDuyet)
+     * Hard delete: Xóa hoàn toàn đơn đăng ký khỏi database
+     * An toàn vì: Khi status = ChoDuyet thì chưa có PaymentHistory tham chiếu
      */
     public void cancelRegistration(Integer subscriptionId) {
         Users currentUser = getCurrentUser();
@@ -297,6 +300,8 @@ public class RegisterService {
             throw new AppException(ErrorCode.INVALID_APPLICATION_STATUS);
         }
         
+        // Hard delete: Xóa hoàn toàn
+        // An toàn vì PaymentHistory chỉ được tạo sau khi thanh toán (status = DaDuyet)
         registerRepository.delete(register);
         log.info("User {} canceled registration {}", currentUser.getEmail(), subscriptionId);
     }
